@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robofocus Protocol Logs</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        h1 {
+            color: #58a6ff;
+            font-size: 1.5em;
+        }
+
+        .header-links a {
+            color: #58a6ff;
+            text-decoration: none;
+            margin-left: 20px;
+        }
+
+        .header-links a:hover {
+            text-decoration: underline;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            background: #161b22;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .stat {
+            display: flex;
+            gap: 5px;
+        }
+
+        .stat-label {
+            color: #8b949e;
+        }
+
+        .stat-value {
+            font-weight: bold;
+        }
+
+        .stat-tx { color: #3fb950; }
+        .stat-rx { color: #58a6ff; }
+        .stat-err { color: #f85149; }
+
+        button {
+            padding: 8px 16px;
+            font-size: 0.9em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: #238636;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2ea043;
+        }
+
+        .btn-danger {
+            background: #da3633;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #f85149;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .auto-refresh input {
+            width: 16px;
+            height: 16px;
+        }
+
+        .logs-container {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: calc(100vh - 200px);
+        }
+
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        .logs-table th {
+            background: #21262d;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #8b949e;
+            border-bottom: 1px solid #30363d;
+            position: sticky;
+            top: 0;
+        }
+
+        .logs-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #21262d;
+            vertical-align: top;
+        }
+
+        .logs-table tr:hover {
+            background: #1c2128;
+        }
+
+        .dir-tx {
+            color: #3fb950;
+            font-weight: bold;
+        }
+
+        .dir-rx {
+            color: #58a6ff;
+            font-weight: bold;
+        }
+
+        .dir-err {
+            color: #f85149;
+            font-weight: bold;
+        }
+
+        .timestamp {
+            color: #8b949e;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+
+        .raw-hex {
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #f0883e;
+            word-break: break-all;
+        }
+
+        .decoded {
+            color: #a5d6ff;
+        }
+
+        .decoded-cmd {
+            color: #d2a8ff;
+            font-weight: bold;
+        }
+
+        .decoded-value {
+            color: #79c0ff;
+        }
+
+        .decoded-desc {
+            color: #8b949e;
+            font-style: italic;
+        }
+
+        .error-msg {
+            color: #f85149;
+        }
+
+        .checksum-valid {
+            color: #3fb950;
+        }
+
+        .checksum-invalid {
+            color: #f85149;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b949e;
+        }
+
+        .empty-state h2 {
+            margin-bottom: 10px;
+            color: #c9d1d9;
+        }
+
+        .byte-view {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin-top: 4px;
+        }
+
+        .byte {
+            background: #21262d;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+
+        .byte-header { background: #1f6feb; color: white; }
+        .byte-cmd { background: #8957e5; color: white; }
+        .byte-value { background: #238636; color: white; }
+        .byte-checksum { background: #da3633; color: white; }
+
+        @media (max-width: 800px) {
+            .logs-table {
+                font-size: 0.75em;
+            }
+            .stats {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Protocol Logs</h1>
+        <div class="header-links">
+            <a href="/">Control Panel</a>
+            <a href="/setup/v1/focuser/0/setup">Setup</a>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="stats" id="stats">
+            <div class="stat">
+                <span class="stat-label">TX:</span>
+                <span class="stat-value stat-tx" id="stat-tx">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">RX:</span>
+                <span class="stat-value stat-rx" id="stat-rx">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Errors:</span>
+                <span class="stat-value stat-err" id="stat-err">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Total:</span>
+                <span class="stat-value" id="stat-total">0</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" onclick="refreshLogs()">Refresh</button>
+            <button class="btn-danger" onclick="clearLogs()">Clear</button>
+            <label class="auto-refresh">
+                <input type="checkbox" id="auto-refresh" checked>
+                Auto-refresh
+            </label>
+            <label class="auto-refresh">
+                <input type="checkbox" id="auto-scroll" checked>
+                Auto-scroll
+            </label>
+        </div>
+    </div>
+
+    <div class="logs-container">
+        <table class="logs-table">
+            <thead>
+                <tr>
+                    <th style="width: 150px;">Timestamp</th>
+                    <th style="width: 50px;">Dir</th>
+                    <th style="width: 200px;">Raw (Hex)</th>
+                    <th>Decoded</th>
+                </tr>
+            </thead>
+            <tbody id="logs-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+
+        async function refreshLogs() {
+            try {
+                const response = await fetch('/gui/logs?limit=200');
+                const data = await response.json();
+
+                updateStats(data.stats);
+                renderMessages(data.messages);
+
+            } catch (e) {
+                console.error('Failed to fetch logs:', e);
+            }
+        }
+
+        function updateStats(stats) {
+            document.getElementById('stat-tx').textContent = stats.tx_count;
+            document.getElementById('stat-rx').textContent = stats.rx_count;
+            document.getElementById('stat-err').textContent = stats.error_count;
+            document.getElementById('stat-total').textContent = stats.total_messages;
+        }
+
+        function renderMessages(messages) {
+            const tbody = document.getElementById('logs-body');
+
+            // Clear existing content safely
+            while (tbody.firstChild) {
+                tbody.removeChild(tbody.firstChild);
+            }
+
+            if (messages.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 4;
+
+                const div = document.createElement('div');
+                div.className = 'empty-state';
+
+                const h2 = document.createElement('h2');
+                h2.textContent = 'No logs yet';
+                div.appendChild(h2);
+
+                const p = document.createElement('p');
+                p.textContent = 'Protocol messages will appear here as they are sent/received.';
+                div.appendChild(p);
+
+                td.appendChild(div);
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                return;
+            }
+
+            messages.forEach(function(msg) {
+                tbody.appendChild(renderMessage(msg));
+            });
+
+            // Auto-scroll to bottom if enabled
+            if (document.getElementById('auto-scroll').checked) {
+                scrollToBottom();
+            }
+        }
+
+        function scrollToBottom() {
+            const container = document.querySelector('.logs-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function renderMessage(msg) {
+            const tr = document.createElement('tr');
+
+            // Timestamp cell
+            const tdTimestamp = document.createElement('td');
+            tdTimestamp.className = 'timestamp';
+            tdTimestamp.textContent = formatTimestamp(msg.timestamp);
+            tr.appendChild(tdTimestamp);
+
+            // Direction cell
+            const tdDir = document.createElement('td');
+            tdDir.className = msg.direction === 'TX' ? 'dir-tx' :
+                            msg.direction === 'RX' ? 'dir-rx' : 'dir-err';
+            tdDir.textContent = msg.direction;
+            tr.appendChild(tdDir);
+
+            // Raw hex cell
+            const tdRaw = document.createElement('td');
+            const divHex = document.createElement('div');
+            divHex.className = 'raw-hex';
+            divHex.textContent = formatHex(msg.raw_hex);
+            tdRaw.appendChild(divHex);
+
+            // Byte view
+            if (msg.raw_bytes && msg.raw_bytes.length > 0) {
+                tdRaw.appendChild(renderByteView(msg.raw_bytes));
+            }
+            tr.appendChild(tdRaw);
+
+            // Decoded cell
+            const tdDecoded = document.createElement('td');
+            renderDecoded(msg, tdDecoded);
+            tr.appendChild(tdDecoded);
+
+            return tr;
+        }
+
+        function formatTimestamp(iso) {
+            const match = iso.match(/T(\d{2}:\d{2}:\d{2}\.\d+)/);
+            return match ? match[1] : iso;
+        }
+
+        function formatHex(hex) {
+            if (!hex) return '(empty)';
+            return hex.match(/.{1,2}/g).join(' ');
+        }
+
+        function renderByteView(bytes) {
+            const div = document.createElement('div');
+            div.className = 'byte-view';
+
+            bytes.forEach(function(b, i) {
+                const span = document.createElement('span');
+                let cls = 'byte';
+                if (i === 0) cls += ' byte-header';
+                else if (i === 1) cls += ' byte-cmd';
+                else if (i >= 2 && i <= 7) cls += ' byte-value';
+                else if (i === 8) cls += ' byte-checksum';
+
+                span.className = cls;
+                span.textContent = b.toString(16).toUpperCase().padStart(2, '0');
+
+                const char = (b >= 32 && b < 127) ? String.fromCharCode(b) : '.';
+                span.title = 'Byte ' + i + ': 0x' + b.toString(16).toUpperCase().padStart(2, '0') + " = '" + char + "'";
+
+                div.appendChild(span);
+            });
+
+            return div;
+        }
+
+        function renderDecoded(msg, container) {
+            if (msg.error) {
+                const span = document.createElement('span');
+                span.className = 'error-msg';
+                span.textContent = msg.error;
+                container.appendChild(span);
+                return;
+            }
+
+            if (!msg.decoded) {
+                const span = document.createElement('span');
+                span.className = 'error-msg';
+                span.textContent = 'Unable to decode';
+                container.appendChild(span);
+                return;
+            }
+
+            const d = msg.decoded;
+
+            // Handle async characters
+            if (d.type === 'async') {
+                const span = document.createElement('span');
+                span.className = 'decoded-desc';
+                span.textContent = 'Async: ' + d.chars;
+                container.appendChild(span);
+                return;
+            }
+
+            // Command
+            if (d.cmd) {
+                const span = document.createElement('span');
+                span.className = 'decoded-cmd';
+                span.textContent = d.cmd;
+                container.appendChild(span);
+                container.appendChild(document.createTextNode(' '));
+            }
+
+            // Value
+            if (d.value !== undefined) {
+                const span = document.createElement('span');
+                span.className = 'decoded-value';
+                span.textContent = d.value;
+                container.appendChild(span);
+                container.appendChild(document.createTextNode(' '));
+            }
+
+            // Description
+            if (d.description) {
+                const span = document.createElement('span');
+                span.className = 'decoded-desc';
+                span.textContent = '(' + d.description + ')';
+                container.appendChild(span);
+            }
+
+            // Checksum status for RX
+            if (d.checksum_valid !== undefined) {
+                const span = document.createElement('span');
+                span.className = d.checksum_valid ? 'checksum-valid' : 'checksum-invalid';
+                span.textContent = d.checksum_valid ? ' [OK]' : ' [FAIL]';
+                container.appendChild(span);
+            }
+        }
+
+        async function clearLogs() {
+            if (!confirm('Clear all protocol logs?')) return;
+
+            try {
+                await fetch('/gui/logs/clear', { method: 'POST' });
+                refreshLogs();
+            } catch (e) {
+                console.error('Failed to clear logs:', e);
+            }
+        }
+
+        function setupAutoRefresh() {
+            const checkbox = document.getElementById('auto-refresh');
+
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    startAutoRefresh();
+                } else {
+                    stopAutoRefresh();
+                }
+            });
+
+            if (checkbox.checked) {
+                startAutoRefresh();
+            }
+        }
+
+        function startAutoRefresh() {
+            if (autoRefreshInterval) return;
+            autoRefreshInterval = setInterval(refreshLogs, 1000);
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        // Initialize
+        refreshLogs();
+        setupAutoRefresh();
+    </script>
+</body>
+</html>

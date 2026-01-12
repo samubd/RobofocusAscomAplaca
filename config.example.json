@@ -1,0 +1,44 @@
+{
+  "server": {
+    "ip": "0.0.0.0",
+    "port": 5000,
+    "discovery_enabled": true
+  },
+  "serial": {
+    "port": "",
+    "baud": 9600,
+    "timeout_seconds": 5,
+    "auto_discover": true,
+    "scan_timeout_seconds": 1.0
+  },
+  "focuser": {
+    "step_size_microns": 4.5,
+    "max_step": 60000,
+    "max_increment": 60000,
+    "min_step": 0,
+    "polling_interval_moving_ms": 100,
+    "polling_interval_idle_sec": 5
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "robofocus_alpaca.log"
+  },
+  "simulator": {
+    "enabled": false,
+    "initial_position": 0,
+    "movement_speed_steps_per_sec": 500,
+    "firmware_version": "002100",
+    "temperature_celsius": 16.85,
+    "temperature_noise_celsius": 0.5,
+    "temperature_drift_per_hour": 0.0,
+    "response_latency_ms": 50,
+    "inject_timeout": false,
+    "inject_checksum_error_rate": 0.0,
+    "web_gui": {
+      "enabled": false,
+      "port": 8080,
+      "use_path_prefix": false,
+      "polling_interval_ms": 250
+    }
+  }
+}

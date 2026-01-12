@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robofocus Control Panel</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a2e;
+            color: #eee;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .mode-badge {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .mode-badge span {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .mode-simulator {
+            background-color: #9C27B0;
+            color: white;
+        }
+
+        .mode-hardware {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .nav-links a {
+            color: #4CAF50;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 0.9em;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .section {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .section h2 {
+            color: #4CAF50;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 5px;
+        }
+
+        .status-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .status-item {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            padding: 10px;
+            background: #0f3460;
+            border-radius: 8px;
+        }
+
+        .status-label {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .status-idle {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .status-moving {
+            background-color: #FF9800;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-disconnected {
+            background-color: #f44336;
+            color: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-step {
+            background-color: #2196F3;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .btn-step:hover:not(:disabled) {
+            background-color: #1976D2;
+        }
+
+        .btn-halt {
+            background-color: #f44336;
+            font-size: 1.2em;
+            padding: 15px 30px;
+            width: 100%;
+        }
+
+        .btn-halt:hover:not(:disabled) {
+            background-color: #d32f2f;
+        }
+
+        .btn-goto {
+            background-color: #673AB7;
+        }
+
+        .btn-goto:hover:not(:disabled) {
+            background-color: #512DA8;
+        }
+
+        .btn-primary {
+            background-color: #4CAF50;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #388E3C;
+        }
+
+        .btn-secondary {
+            background-color: #607D8B;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #455A64;
+        }
+
+        .btn-warning {
+            background-color: #FF9800;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            background-color: #F57C00;
+        }
+
+        input, select {
+            padding: 10px;
+            font-size: 1em;
+            border: 2px solid #0f3460;
+            border-radius: 5px;
+            background: #1a1a2e;
+            color: #eee;
+            width: 100%;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .input-group input, .input-group select {
+            flex: 1;
+        }
+
+        .input-group button {
+            white-space: nowrap;
+        }
+
+        .error-box {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #c62828;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error-box.show {
+            display: block;
+        }
+
+        .success-box {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2e7d32;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .success-box.show {
+            display: block;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: #0f3460;
+            border-radius: 5px;
+        }
+
+        .config-label {
+            color: #aaa;
+        }
+
+        .config-value {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .calibration-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .calibration-row label {
+            min-width: 120px;
+            color: #aaa;
+        }
+
+        .calibration-row input {
+            flex: 1;
+        }
+
+        .backlash-hint {
+            color: #888;
+            font-size: 0.8em;
+            min-width: 70px;
+        }
+
+        .no-devices {
+            color: #f44336;
+            padding: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn-step {
+                width: 100%;
+            }
+
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Robofocus Control Panel</h1>
+
+    <div class="mode-badge">
+        <span id="mode-indicator" class="mode-simulator">SIMULATOR</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/setup/v1/focuser/0/setup">Settings</a>
+        <a href="/logs.html">Protocol Logs</a>
+    </div>
+
+    <!-- Status Display -->
+    <div class="section">
+        <h2>Status</h2>
+        <div class="status-display">
+            <div class="status-item">
+                <div class="status-label">Position</div>
+                <div class="status-value" id="position">--</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Status</div>
+                <div>
+                    <span class="status-badge status-disconnected" id="status">DISCONNECTED</span>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Temperature</div>
+                <div class="status-value" id="temperature">--</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Port</div>
+                <div class="status-value" id="current-port" style="font-size: 1em;">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Step Controls -->
+    <div class="section">
+        <h2>Quick Step Controls</h2>
+        <div class="button-group">
+            <button class="btn-step" onclick="moveSteps(100, 'in')">-100</button>
+            <button class="btn-step" onclick="moveSteps(10, 'in')">-10</button>
+            <button class="btn-step" onclick="moveSteps(1, 'in')">-1</button>
+            <button class="btn-step" onclick="moveSteps(1, 'out')">+1</button>
+            <button class="btn-step" onclick="moveSteps(10, 'out')">+10</button>
+            <button class="btn-step" onclick="moveSteps(100, 'out')">+100</button>
+        </div>
+        <div class="button-group" style="margin-top: 10px;">
+            <button class="btn-step" onclick="moveSteps(1000, 'in')">-1000</button>
+            <button class="btn-step" onclick="moveSteps(1000, 'out')">+1000</button>
+        </div>
+    </div>
+
+    <!-- Absolute Position -->
+    <div class="section">
+        <h2>Absolute Position</h2>
+        <div class="input-group">
+            <input type="number" id="goto-position" placeholder="Enter target position" min="0" value="0">
+            <button class="btn-goto" onclick="goToPosition()">GoTo</button>
+        </div>
+    </div>
+
+    <!-- Halt Button -->
+    <div class="section">
+        <h2>Emergency Stop</h2>
+        <button class="btn-halt" onclick="halt()">HALT</button>
+    </div>
+
+    <!-- Calibration -->
+    <div class="section">
+        <h2>Calibration</h2>
+        <div class="calibration-row">
+            <label>Current Position:</label>
+            <input type="number" id="current-pos-display" readonly>
+            <button class="btn-warning" onclick="setZero()">Set as Zero</button>
+        </div>
+        <div class="calibration-row">
+            <label>Max Extension:</label>
+            <input type="number" id="max-extension" value="60000" min="1" max="65535">
+            <button class="btn-primary" onclick="setMaxExtension()">Set Max</button>
+        </div>
+        <div class="calibration-row">
+            <label>Min Position:</label>
+            <input type="number" id="min-position" value="0" min="0">
+            <button class="btn-primary" onclick="setMinPosition()">Set Min</button>
+        </div>
+        <div class="calibration-row">
+            <label>Max Increment:</label>
+            <input type="number" id="max-increment" value="60000" min="1" max="65535">
+            <button class="btn-primary" onclick="setMaxIncrement()">Set</button>
+        </div>
+        <div class="calibration-row">
+            <label>Backlash:</label>
+            <input type="number" id="backlash-value" value="0" min="-255" max="255">
+            <button class="btn-primary" onclick="setBacklash()">Set</button>
+            <span class="backlash-hint">(+OUT, -IN)</span>
+        </div>
+    </div>
+
+    <!-- Configuration -->
+    <div class="section">
+        <h2>Configuration</h2>
+        <div class="config-grid">
+            <div class="config-item">
+                <span class="config-label">Min Position:</span>
+                <span class="config-value" id="config-min">0</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Max Position:</span>
+                <span class="config-value" id="config-max">60000</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Max Increment:</span>
+                <span class="config-value" id="config-max-increment">60000</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Backlash:</span>
+                <span class="config-value" id="config-backlash">0</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Firmware:</span>
+                <span class="config-value" id="firmware-version">--</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Mode:</span>
+                <span class="config-value" id="config-mode">--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="error-box" class="error-box"></div>
+    <div id="success-box" class="success-box"></div>
+
+    <script>
+        let pollingInterval = null;
+        let calibrationInitialized = false;
+        let state = {
+            mode: 'unknown',
+            connected: false,
+            position: 0,
+            isMoving: false,
+            temperature: null,
+            maxStep: 60000,
+            minStep: 0,
+            backlash: 0
+        };
+
+        // ====================================================================
+        // Status Updates
+        // ====================================================================
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/gui/status');
+                if (!response.ok) {
+                    throw new Error('HTTP error ' + response.status);
+                }
+
+                const data = await response.json();
+                state = {
+                    mode: data.mode,
+                    connected: data.connected,
+                    position: data.position,
+                    isMoving: data.is_moving,
+                    temperature: data.temperature,
+                    maxStep: data.max_step,
+                    minStep: data.min_step,
+                    port: data.port,
+                    firmware: data.firmware_version
+                };
+
+                // Update mode indicator
+                const modeIndicator = document.getElementById('mode-indicator');
+                if (data.mode === 'simulator') {
+                    modeIndicator.textContent = 'SIMULATOR';
+                    modeIndicator.className = 'mode-simulator';
+                } else {
+                    modeIndicator.textContent = 'HARDWARE';
+                    modeIndicator.className = 'mode-hardware';
+                }
+
+                // Update position
+                document.getElementById('position').textContent = data.connected ? data.position : '--';
+                document.getElementById('current-pos-display').value = data.connected ? data.position : '';
+
+                // Update temperature
+                document.getElementById('temperature').textContent =
+                    (data.temperature !== null) ? data.temperature.toFixed(1) + '\u00B0C' : '--';
+
+                // Update status badge
+                const statusBadge = document.getElementById('status');
+                if (!data.connected) {
+                    statusBadge.textContent = 'DISCONNECTED';
+                    statusBadge.className = 'status-badge status-disconnected';
+                } else if (data.is_moving) {
+                    statusBadge.textContent = 'MOVING';
+                    statusBadge.className = 'status-badge status-moving';
+                } else {
+                    statusBadge.textContent = 'IDLE';
+                    statusBadge.className = 'status-badge status-idle';
+                }
+
+                // Update port
+                document.getElementById('current-port').textContent = data.port || '--';
+
+                // Update config display
+                document.getElementById('config-min').textContent = data.min_step;
+                document.getElementById('config-max').textContent = data.max_step;
+                document.getElementById('config-max-increment').textContent = data.max_increment;
+                document.getElementById('config-backlash').textContent = formatBacklash(data.backlash);
+                document.getElementById('config-mode').textContent = data.mode;
+                document.getElementById('firmware-version').textContent = data.firmware_version || '--';
+
+                // Update goto position max limit
+                document.getElementById('goto-position').max = data.max_step;
+
+                // Initialize calibration inputs only once on page load
+                if (!calibrationInitialized) {
+                    document.getElementById('max-extension').value = data.max_step;
+                    document.getElementById('min-position').value = data.min_step;
+                    document.getElementById('max-increment').value = data.max_increment;
+                    document.getElementById('backlash-value').value = data.backlash;
+                    calibrationInitialized = true;
+                }
+
+                // Update button states
+                const moveButtons = document.querySelectorAll('.btn-step, .btn-goto');
+                moveButtons.forEach(function(btn) {
+                    btn.disabled = !data.connected || data.is_moving;
+                });
+
+            } catch (error) {
+                console.error('Error fetching status:', error);
+            }
+        }
+
+        // ====================================================================
+        // Movement Controls
+        // ====================================================================
+
+        async function moveSteps(steps, direction) {
+            hideMessages();
+
+            try {
+                const response = await fetch('/gui/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ steps: steps, direction: direction })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Move failed');
+                }
+
+                await updateStatus();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function goToPosition() {
+            hideMessages();
+            const position = parseInt(document.getElementById('goto-position').value);
+
+            if (isNaN(position)) {
+                showError('Invalid position');
+                return;
+            }
+
+            try {
+                const response = await fetch('/gui/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ position: position })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Move failed');
+                }
+
+                await updateStatus();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function halt() {
+            hideMessages();
+
+            try {
+                const response = await fetch('/gui/halt', { method: 'POST' });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Halt failed');
+                }
+
+                showSuccess('Movement halted');
+                await updateStatus();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        // ====================================================================
+        // Calibration
+        // ====================================================================
+
+        async function setZero() {
+            hideMessages();
+
+            try {
+                const response = await fetch('/gui/set-zero', { method: 'POST' });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to set zero');
+                }
+
+                const result = await response.json();
+                showSuccess(result.message);
+                await updateStatus();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function setMaxExtension() {
+            hideMessages();
+            const value = parseInt(document.getElementById('max-extension').value);
+
+            if (isNaN(value) || value <= 0) {
+                showError('Invalid max extension value');
+                return;
+            }
+
+            try {
+                const response = await fetch('/gui/set-max', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ position: value })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to set max');
+                }
+
+                const result = await response.json();
+                showSuccess(result.message);
+                await updateStatus();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function setMinPosition() {
+            hideMessages();
+            const value = parseInt(document.getElementById('min-position').value);
+
+            if (isNaN(value) || value < 0) {
+                showError('Invalid min position value');
+                return;
+            }
+
+            try {
+                const response = await fetch('/gui/set-min', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ position: value })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to set min');
+                }
+
+                const result = await response.json();
+                showSuccess(result.message);
+                await updateStatus();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function setMaxIncrement() {
+            hideMessages();
+            const value = parseInt(document.getElementById('max-increment').value);
+
+            if (isNaN(value) || value <= 0) {
+                showError('Invalid max increment value');
+                return;
+            }
+
+            try {
+                const response = await fetch('/gui/set-max-increment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ position: value })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to set max increment');
+                }
+
+                const result = await response.json();
+                showSuccess(result.message);
+                await updateStatus();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function setBacklash() {
+            hideMessages();
+            const value = parseInt(document.getElementById('backlash-value').value);
+
+            if (isNaN(value) || value < -255 || value > 255) {
+                showError('Backlash must be between -255 and +255');
+                return;
+            }
+
+            try {
+                const response = await fetch('/gui/set-backlash', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value: value })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to set backlash');
+                }
+
+                const result = await response.json();
+                showSuccess(result.message);
+                await updateStatus();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function formatBacklash(value) {
+            if (value === 0) return '0 (off)';
+            if (value > 0) return '+' + value + ' (OUT)';
+            return value + ' (IN)';
+        }
+
+        // ====================================================================
+        // Messages
+        // ====================================================================
+
+        function showError(message) {
+            const box = document.getElementById('error-box');
+            box.textContent = message;
+            box.classList.add('show');
+            document.getElementById('success-box').classList.remove('show');
+            setTimeout(function() { box.classList.remove('show'); }, 5000);
+        }
+
+        function showSuccess(message) {
+            const box = document.getElementById('success-box');
+            box.textContent = message;
+            box.classList.add('show');
+            document.getElementById('error-box').classList.remove('show');
+            setTimeout(function() { box.classList.remove('show'); }, 3000);
+        }
+
+        function hideMessages() {
+            document.getElementById('error-box').classList.remove('show');
+            document.getElementById('success-box').classList.remove('show');
+        }
+
+        // ====================================================================
+        // Polling
+        // ====================================================================
+
+        function startPolling() {
+            updateStatus();
+            pollingInterval = setInterval(updateStatus, 500);
+        }
+
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                startPolling();
+            }
+        });
+
+        // ====================================================================
+        // Init
+        // ====================================================================
+
+        window.addEventListener('load', function() {
+            startPolling();
+        });
+
+        window.addEventListener('beforeunload', stopPolling);
+    </script>
+</body>
+</html>
