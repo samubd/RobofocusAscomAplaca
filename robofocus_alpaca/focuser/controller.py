@@ -38,6 +38,7 @@ class FocuserController:
         self._connected = False
         self._position_cache = 0
         self._last_position_update: Optional[datetime] = None
+        self._backlash_cache = 0  # Cached backlash value (signed INDI convention)
 
         # Movement tracking
         self._polling_thread: Optional[threading.Thread] = None
@@ -94,6 +95,8 @@ class FocuserController:
             # Read backlash settings from hardware
             direction, amount = self.protocol.get_backlash()
             direction_str = "IN" if direction == 2 else "OUT"
+            # Cache the value (convert to signed INDI convention)
+            self._backlash_cache = -amount if direction == 2 else amount
             logger.info(f"Hardware backlash: {amount} steps on {direction_str} motion")
         except Exception as e:
             logger.warning(f"Could not read backlash from hardware: {e}")
@@ -300,6 +303,8 @@ class FocuserController:
         - Negative value = IN motion compensation
         - Zero = no compensation
 
+        Returns cached value during movement to avoid serial communication issues.
+
         Returns:
             Backlash amount (-255 to +255).
 
@@ -309,14 +314,20 @@ class FocuserController:
         if not self.connected:
             raise NotConnectedError("Focuser not connected")
 
+        # Return cached value during movement to avoid "Unexpected response to FB: FD" errors
+        # The hardware cannot respond to FB commands while sending async movement chars (I/O/F)
+        if self.protocol.is_moving():
+            logger.debug(f"Backlash query during movement, returning cached value: {self._backlash_cache}")
+            return self._backlash_cache
+
+        # Query hardware when idle and update cache
         direction, amount = self.protocol.get_backlash()
 
         # Convert to signed value (INDI convention)
         # direction 2 = IN = negative, direction 3 = OUT = positive
-        if direction == 2:
-            return -amount
-        else:
-            return amount
+        self._backlash_cache = -amount if direction == 2 else amount
+
+        return self._backlash_cache
 
     def set_backlash(self, value: int) -> None:
         """
@@ -349,4 +360,8 @@ class FocuserController:
             amount = -value
 
         self.protocol.set_backlash(direction, amount)
+
+        # Update cache
+        self._backlash_cache = value
+
         logger.info(f"Backlash set to {value} ({'OUT' if value >= 0 else 'IN'} motion, {amount} steps)")
