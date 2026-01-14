@@ -131,6 +131,20 @@ class UserSettingsManager:
             self.save()
             logger.info(f"Saved min_step: {value}")
 
+    @property
+    def use_simulator(self) -> bool:
+        """Get simulator mode preference."""
+        return self._settings.use_simulator
+
+    @use_simulator.setter
+    def use_simulator(self, value: bool) -> None:
+        """Set simulator mode preference and save."""
+        if self._settings.use_simulator != value:
+            self._settings.use_simulator = value
+            self.save()
+            mode = "simulator" if value else "hardware"
+            logger.info(f"Saved use_simulator: {value} (mode: {mode})")
+
 
 # Global instance (initialized by app startup)
 _manager: Optional[UserSettingsManager] = None

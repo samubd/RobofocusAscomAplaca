@@ -93,8 +93,14 @@ def main():
         logger.info(f"Using saved min_step: {user_settings.min_step}")
         config.focuser.min_step = user_settings.min_step
 
+    # Determine mode: user preference overrides config.json
+    # This allows runtime mode switching via GUI
+    use_simulator = user_settings.use_simulator
+    if use_simulator != config.simulator.enabled:
+        logger.info(f"User preference overrides config: use_simulator={use_simulator}")
+
     # Create protocol instance (simulator or real hardware)
-    if config.simulator.enabled:
+    if use_simulator:
         logger.info("Using SIMULATOR mode")
         protocol = MockSerialProtocol(config.simulator)
     else:
@@ -168,12 +174,12 @@ def main():
 
     # Store dependencies in app.state for access by route handlers
     app.state.focuser = focuser_controller
-    app.state.simulator = protocol if config.simulator.enabled else None
+    app.state.simulator = protocol if use_simulator else None
     app.state.config = config
     app.state.user_settings = user_settings
 
     # Include simulator API routes if in simulator mode
-    if config.simulator.enabled:
+    if use_simulator:
         app.include_router(simulator_router)
 
     # Include Alpaca API routes

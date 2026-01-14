@@ -57,6 +57,24 @@ class FocuserController:
 
         logger.info("FocuserController initialized")
 
+    def set_protocol(self, protocol: SerialProtocolInterface) -> None:
+        """
+        Replace the protocol implementation (e.g., switch between hardware and simulator).
+
+        This can only be done when disconnected.
+
+        Args:
+            protocol: New protocol implementation.
+
+        Raises:
+            RuntimeError: If focuser is currently connected.
+        """
+        if self._connected:
+            raise RuntimeError("Cannot change protocol while connected. Disconnect first.")
+
+        self.protocol = protocol
+        logger.info(f"Protocol changed to {type(protocol).__name__}")
+
     def _save_config(self) -> None:
         """Save configuration to file if app_config is available."""
         if self._app_config and self._config_path:

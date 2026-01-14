@@ -308,6 +308,37 @@ def _get_setup_page_html(
         .link-row {{ text-align: center; margin-top: 20px; }}
         .link-row a {{ color: #4CAF50; text-decoration: none; }}
         .link-row a:hover {{ text-decoration: underline; }}
+        .mode-selector {{
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }}
+        .mode-option {{
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border: 2px solid #0f3460;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        .mode-option:hover:not(.disabled) {{
+            border-color: #4CAF50;
+            background: #0f3460;
+        }}
+        .mode-option.active {{
+            border-color: #4CAF50;
+            background: #0f3460;
+        }}
+        .mode-option.disabled {{
+            opacity: 0.4;
+            cursor: not-allowed;
+        }}
+        .mode-hint {{
+            color: #888;
+            font-size: 0.85em;
+            margin-top: 8px;
+        }}
     </style>
 </head>
 <body>
@@ -336,6 +367,21 @@ def _get_setup_page_html(
             <span class="info-label">Position:</span>
             <span class="info-value">{position}</span>
         </div>
+    </div>
+
+    <div class="section">
+        <h2>Mode Selection</h2>
+        <div class="mode-selector">
+            <div class="mode-option" id="mode-hardware" onclick="selectMode(false)">
+                <strong>Hardware</strong>
+                <div class="mode-hint">Real Robofocus device</div>
+            </div>
+            <div class="mode-option" id="mode-simulator" onclick="selectMode(true)">
+                <strong>Simulator</strong>
+                <div class="mode-hint">Virtual device for testing</div>
+            </div>
+        </div>
+        <div id="mode-msg" style="display:none; padding:10px; border-radius:5px; margin-top:10px;"></div>
     </div>
 
     <div class="section" id="port-section" style="{port_section_style}">
@@ -444,6 +490,79 @@ def _get_setup_page_html(
             }}
         }}
 
+        // Mode selection functions
+        async function loadCurrentMode() {{
+            try {{
+                var response = await fetch('/gui/mode');
+                var data = await response.json();
+
+                // Update UI based on current mode
+                var hwOption = document.getElementById('mode-hardware');
+                var simOption = document.getElementById('mode-simulator');
+
+                if (data.current_mode === 'simulator') {{
+                    simOption.classList.add('active');
+                    hwOption.classList.remove('active');
+                }} else {{
+                    hwOption.classList.add('active');
+                    simOption.classList.remove('active');
+                }}
+
+                // Disable mode selection if connected
+                if (!data.can_switch) {{
+                    hwOption.classList.add('disabled');
+                    simOption.classList.add('disabled');
+                    hwOption.onclick = null;
+                    simOption.onclick = null;
+                }}
+            }} catch (e) {{
+                console.error('Failed to load mode:', e);
+            }}
+        }}
+
+        async function selectMode(useSimulator) {{
+            var modeMsg = document.getElementById('mode-msg');
+
+            try {{
+                var response = await fetch('/gui/mode');
+                var data = await response.json();
+
+                // Check if switching is allowed
+                if (!data.can_switch) {{
+                    modeMsg.style.display = 'block';
+                    modeMsg.style.background = '#b71c1c';
+                    modeMsg.textContent = data.reason || 'Cannot switch mode while connected';
+                    return;
+                }}
+
+                // Perform mode switch
+                modeMsg.style.display = 'block';
+                modeMsg.style.background = '#0d47a1';
+                modeMsg.textContent = 'Switching mode...';
+
+                var switchResponse = await fetch('/gui/mode', {{
+                    method: 'PUT',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ use_simulator: useSimulator }})
+                }});
+
+                if (switchResponse.ok) {{
+                    var result = await switchResponse.json();
+                    modeMsg.style.background = '#1b5e20';
+                    modeMsg.textContent = result.message + ' - Reloading...';
+                    setTimeout(function() {{ location.reload(); }}, 1500);
+                }} else {{
+                    var err = await switchResponse.json();
+                    modeMsg.style.background = '#b71c1c';
+                    modeMsg.textContent = err.detail || 'Mode switch failed';
+                }}
+            }} catch (e) {{
+                modeMsg.style.display = 'block';
+                modeMsg.style.background = '#b71c1c';
+                modeMsg.textContent = 'Mode switch failed: ' + e.message;
+            }}
+        }}
+
         // Load ports on page load
         async function loadPorts() {{
             try {{
@@ -463,6 +582,8 @@ def _get_setup_page_html(
             }}
         }}
 
+        // Load initial state
+        loadCurrentMode();
         loadPorts();
     </script>
 </body>

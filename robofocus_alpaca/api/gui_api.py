@@ -607,3 +607,98 @@ async def set_logs_enabled(enabled: bool = True):
     logger.info(f"[GUI] Protocol logging {'enabled' if enabled else 'disabled'}")
 
     return {"status": "ok", "enabled": enabled}
+
+
+# ============================================================================
+# Mode Switching Endpoints
+# ============================================================================
+
+class ModeInfo(BaseModel):
+    """Mode information response."""
+    current_mode: str  # "hardware" or "simulator"
+    can_switch: bool  # False if connected
+    reason: Optional[str] = None  # Why switching is not allowed
+
+
+class SetModeRequest(BaseModel):
+    """Request to change mode."""
+    use_simulator: bool = Field(..., description="True for simulator, False for hardware")
+
+
+@router.get("/mode", response_model=ModeInfo)
+async def get_mode(request: Request):
+    """
+    Get current mode (hardware/simulator) and whether it can be switched.
+    """
+    focuser = get_focuser(request)
+    simulator = getattr(request.app.state, 'simulator', None)
+    user_settings = get_user_settings(request)
+
+    current_mode = "simulator" if simulator else "hardware"
+    connected = focuser.connected
+    can_switch = not connected
+
+    reason = None
+    if connected:
+        reason = "Cannot switch mode while connected. Disconnect first."
+
+    return ModeInfo(
+        current_mode=current_mode,
+        can_switch=can_switch,
+        reason=reason
+    )
+
+
+@router.put("/mode")
+async def set_mode(request: Request, mode_request: SetModeRequest):
+    """
+    Switch between hardware and simulator mode.
+
+    This can only be done when disconnected. The preference is saved
+    to user_settings.json and will be used on next startup.
+    """
+    focuser = get_focuser(request)
+    user_settings = get_user_settings(request)
+    config = getattr(request.app.state, 'config', None)
+
+    if not config:
+        raise HTTPException(status_code=500, detail="Configuration not available")
+
+    # Check if connected
+    if focuser.connected:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot switch mode while connected. Disconnect first."
+        )
+
+    try:
+        # Save preference to user settings
+        user_settings.use_simulator = mode_request.use_simulator
+
+        # Create new protocol based on mode
+        if mode_request.use_simulator:
+            from robofocus_alpaca.simulator.mock_serial import MockSerialProtocol
+            new_protocol = MockSerialProtocol(config.simulator)
+            new_mode = "simulator"
+        else:
+            from robofocus_alpaca.protocol.robofocus_serial import RobofocusSerial
+            new_protocol = RobofocusSerial(config.serial)
+            new_mode = "hardware"
+
+        # Hot-swap the protocol
+        focuser.set_protocol(new_protocol)
+
+        # Update app state
+        request.app.state.simulator = new_protocol if mode_request.use_simulator else None
+
+        logger.info(f"[GUI] Mode switched to {new_mode} (saved to user settings)")
+
+        return {
+            "status": "ok",
+            "message": f"Mode switched to {new_mode}",
+            "mode": new_mode
+        }
+
+    except Exception as e:
+        logger.error(f"Error switching mode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

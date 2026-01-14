@@ -180,6 +180,10 @@ class UserSettings(BaseModel):
         le=65535,
         description="Software minimum position limit"
     )
+    use_simulator: bool = Field(
+        default=False,
+        description="Use simulator mode instead of real hardware"
+    )
 
     class Config:
         """Pydantic config."""
