@@ -332,9 +332,16 @@ class FocuserController:
         finally:
             # Always update final position when thread exits
             try:
-                # Force clear moving flag before querying position
+                # Give hardware a moment to settle after movement before querying position
+                # Without this delay, the FG command may timeout if sent too soon after 'F' char
+                # Keep moving flag True during this settling time so external get_position()
+                # calls will return cached value instead of querying hardware
+                time.sleep(0.15)  # 150ms settling time
+
+                # NOW clear moving flag and query final position
                 if hasattr(self.protocol, '_is_moving_flag'):
                     self.protocol._is_moving_flag = False
+
                 self._position_cache = self.protocol.get_position()
                 self._last_position_update = datetime.now()
                 logger.debug(f"Polling thread exit, final position: {self._position_cache}")
