@@ -11,7 +11,8 @@ from datetime import datetime
 from typing import Optional
 
 from robofocus_alpaca.protocol.interface import SerialProtocolInterface
-from robofocus_alpaca.config.models import FocuserConfig
+from robofocus_alpaca.config.models import FocuserConfig, AppConfig
+from robofocus_alpaca.config.loader import save_config
 from robofocus_alpaca.utils.exceptions import NotConnectedError, InvalidValueError
 
 
@@ -23,16 +24,26 @@ class FocuserController:
     Focuser controller managing state and movement.
     """
 
-    def __init__(self, protocol: SerialProtocolInterface, config: FocuserConfig):
+    def __init__(
+        self,
+        protocol: SerialProtocolInterface,
+        config: FocuserConfig,
+        app_config: Optional[AppConfig] = None,
+        config_path: Optional[str] = None
+    ):
         """
         Initialize focuser controller.
 
         Args:
             protocol: Serial protocol implementation (real or simulator).
             config: Focuser configuration.
+            app_config: Full application config (for saving). Optional.
+            config_path: Path to config.json for saving. Optional.
         """
         self.protocol = protocol
         self.config = config
+        self._app_config = app_config
+        self._config_path = config_path
 
         # State
         self._connected = False
@@ -45,6 +56,18 @@ class FocuserController:
         self._stop_polling = threading.Event()
 
         logger.info("FocuserController initialized")
+
+    def _save_config(self) -> None:
+        """Save configuration to file if app_config is available."""
+        if self._app_config and self._config_path:
+            try:
+                save_config(self._app_config, self._config_path)
+            except Exception as e:
+                logger.warning(f"Failed to save config: {e}")
+
+    def save_config(self) -> None:
+        """Public method to save configuration."""
+        self._save_config()
 
     @property
     def connected(self) -> bool:
@@ -77,7 +100,24 @@ class FocuserController:
         logger.info(f"Focuser connected at position {self._position_cache}")
 
     def _query_hardware_settings(self) -> None:
-        """Query and log hardware settings after connection."""
+        """Query and log hardware settings after connection, and save to config."""
+        config_changed = False
+
+        # Save firmware version
+        if hasattr(self.protocol, 'firmware_version') and self.protocol.firmware_version:
+            if self.config.firmware_version != self.protocol.firmware_version:
+                self.config.firmware_version = self.protocol.firmware_version
+                config_changed = True
+                logger.info(f"Saved firmware version to config: {self.protocol.firmware_version}")
+
+        # Save serial port
+        if self._app_config and hasattr(self.protocol, 'port_name'):
+            port_name = self.protocol.port_name
+            if self._app_config.serial.port != port_name:
+                self._app_config.serial.port = port_name
+                config_changed = True
+                logger.info(f"Saved serial port to config: {port_name}")
+
         try:
             # Read max travel from hardware
             hw_max_travel = self.protocol.get_max_travel()
@@ -86,6 +126,7 @@ class FocuserController:
                 if hw_max_travel != self.config.max_step:
                     logger.info(f"Hardware max travel: {hw_max_travel} (config was {self.config.max_step})")
                     self.config.max_step = hw_max_travel
+                    config_changed = True
                 else:
                     logger.debug(f"Hardware max travel: {hw_max_travel}")
         except Exception as e:
@@ -97,9 +138,17 @@ class FocuserController:
             direction_str = "IN" if direction == 2 else "OUT"
             # Cache the value (convert to signed INDI convention)
             self._backlash_cache = -amount if direction == 2 else amount
+            # Save to config
+            if self.config.backlash_steps != self._backlash_cache:
+                self.config.backlash_steps = self._backlash_cache
+                config_changed = True
             logger.info(f"Hardware backlash: {amount} steps on {direction_str} motion")
         except Exception as e:
             logger.warning(f"Could not read backlash from hardware: {e}")
+
+        # Save config if anything changed
+        if config_changed:
+            self._save_config()
 
     def disconnect(self) -> None:
         """Disconnect from focuser hardware."""
@@ -363,5 +412,10 @@ class FocuserController:
 
         # Update cache
         self._backlash_cache = value
+
+        # Update config and save
+        if self.config.backlash_steps != value:
+            self.config.backlash_steps = value
+            self._save_config()
 
         logger.info(f"Backlash set to {value} ({'OUT' if value >= 0 else 'IN'} motion, {amount} steps)")

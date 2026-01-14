@@ -77,6 +77,36 @@ def load_config(path: Optional[str] = None) -> AppConfig:
     return config
 
 
+def save_config(config: AppConfig, path: Optional[str] = None) -> None:
+    """
+    Save configuration to JSON file.
+
+    Args:
+        config: AppConfig instance to save.
+        path: Path to config.json file. If None, uses "config.json" in current directory.
+
+    Raises:
+        ConfigurationError: If config file cannot be written.
+    """
+    if path is None:
+        path = "config.json"
+
+    config_path = Path(path)
+
+    try:
+        # Convert to dict with all values
+        config_dict = config.model_dump()
+
+        # Write to file with pretty formatting
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config_dict, f, indent=2)
+
+        logger.info(f"Configuration saved to {config_path}")
+
+    except IOError as e:
+        raise ConfigurationError(f"Failed to write {config_path}: {e}") from e
+
+
 def create_example_config(path: str = "config.example.json") -> None:
     """
     Create an example configuration file with all default values and documentation.

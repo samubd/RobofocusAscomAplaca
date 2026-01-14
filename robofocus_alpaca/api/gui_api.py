@@ -417,7 +417,10 @@ async def set_max_extension(request: Request, data: SetPositionRequest):
         # Then update config
         focuser.config.max_step = data.position
 
-        logger.info(f"[GUI] Max extension changed: {old_max} -> {data.position} (written to hardware)")
+        # Save config to file
+        focuser.save_config()
+
+        logger.info(f"[GUI] Max extension changed: {old_max} -> {data.position} (written to hardware and saved to config)")
 
         return {
             "status": "ok",

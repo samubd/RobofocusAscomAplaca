@@ -55,6 +55,12 @@ class FocuserConfig(BaseModel):
     polling_interval_idle_sec: int = Field(
         default=5, ge=1, le=60, description="Polling interval when idle (seconds)"
     )
+    firmware_version: Optional[str] = Field(
+        default=None, description="Firmware version (read from hardware)"
+    )
+    backlash_steps: int = Field(
+        default=0, ge=-255, le=255, description="Backlash compensation (signed INDI convention)"
+    )
 
     @field_validator("max_step")
     @classmethod

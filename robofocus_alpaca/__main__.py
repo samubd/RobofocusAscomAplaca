@@ -155,8 +155,13 @@ def main():
         # Create real serial protocol
         protocol = RobofocusSerial(serial_config)
 
-    # Create focuser controller
-    focuser_controller = FocuserController(protocol, config.focuser)
+    # Create focuser controller with full config for saving
+    focuser_controller = FocuserController(
+        protocol,
+        config.focuser,
+        app_config=config,
+        config_path=args.config
+    )
 
     # Create FastAPI app
     app = create_app(config)
