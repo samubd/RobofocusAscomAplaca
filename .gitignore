@@ -67,6 +67,11 @@ dmypy.json
 # Type checking
 .pytype/
 
+# Build artifacts
+installer_output/
+*.spec.bak
+release/
+
 #other
 references/Robofocus-User-Manual-1.pdf
 .claude/

@@ -34,15 +34,17 @@ hiddenimports = [
 ]
 
 # Collect static files (HTML, CSS, JS)
+# Files are placed in 'static' folder inside the bundle
 static_files = []
 static_dir = os.path.join('robofocus_alpaca', 'static')
 if os.path.exists(static_dir):
     for root, dirs, files in os.walk(static_dir):
         for file in files:
             file_path = os.path.join(root, file)
-            # Destination path in the bundle
-            dest_path = os.path.dirname(file_path)
-            static_files.append((file_path, dest_path))
+            # Destination: maintain the same relative path structure
+            # e.g., robofocus_alpaca/static/index.html -> static/index.html
+            rel_path = os.path.relpath(root, 'robofocus_alpaca')
+            static_files.append((file_path, rel_path))
 
 a = Analysis(
     ['robofocus_alpaca/__main__.py'],

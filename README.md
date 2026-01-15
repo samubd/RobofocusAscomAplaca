@@ -29,28 +29,44 @@ A modern, feature-rich ASCOM Alpaca v1 driver for Robofocus electronic focusers,
 
 ## Requirements
 
-- **Python 3.8+**
-- **Windows** (for serial port access) or Linux/macOS with pyserial
+- **Windows 10/11** (recommended for NINA integration)
 - **Robofocus electronic focuser** (for hardware mode)
+- **Python 3.8+** (only for development or running from source)
 
 ## Installation
 
-### 1. Clone the Repository
+### Option 1: Windows Installer (Recommended)
+
+1. Download the latest installer from [Releases](https://github.com/samubd/RobofocusAscomAplaca/releases)
+2. Run `RobofocusAlpaca_Setup_x.x.x.exe`
+3. Follow the installation wizard
+4. The installer will:
+   - Install the driver to `C:\Program Files\RobofocusAlpaca`
+   - Create Start Menu shortcuts
+   - Optionally add Desktop shortcut
+   - Configure Windows Firewall for UDP discovery
+
+### Option 2: Portable Executable
+
+1. Download `RobofocusAlpaca_Portable.zip` from [Releases](https://github.com/samubd/RobofocusAscomAplaca/releases)
+2. Extract to any folder
+3. Run `RobofocusAlpaca.exe`
+4. (First run) If Windows SmartScreen appears, click "More info" → "Run anyway"
+5. Allow firewall access when prompted
+
+> **Note**: The executable is not digitally signed. Windows may show a security warning on first run. This is normal for open-source software. The source code is fully available for review.
+
+### Option 3: Run from Source (Development)
 
 ```bash
-git clone https://github.com/yourusername/RobofocusAscomAplaca.git
+# Clone the repository
+git clone https://github.com/samubd/RobofocusAscomAplaca.git
 cd RobofocusAscomAplaca
-```
 
-### 2. Install Dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### 3. Run the Driver
-
-```bash
+# Run the driver
 python -m robofocus_alpaca
 ```
 
@@ -319,6 +335,51 @@ View detailed protocol logs:
 - **Pydantic** - Data validation
 - **pyserial** - Serial port communication
 
+### Building Windows Executable
+
+To create the Windows executable from source:
+
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Run the build script
+python build.py
+```
+
+This creates `dist/RobofocusAlpaca/RobofocusAlpaca.exe`.
+
+### Creating the Installer
+
+To create a professional Windows installer:
+
+1. Build the executable first: `python build.py`
+2. Download and install [Inno Setup](https://jrsoftware.org/isinfo.php)
+3. Open `installer.iss` in Inno Setup Compiler
+4. Click "Build → Compile" (or press Ctrl+F9)
+5. The installer will be created in `installer_output/`
+
+The installer includes:
+- Automatic firewall configuration for NINA discovery
+- Start Menu and Desktop shortcuts
+- Optional auto-start with Windows
+- Clean uninstallation
+
+### Code Signing (Optional)
+
+To avoid Windows SmartScreen warnings, you can sign the executable with a code signing certificate:
+
+```bash
+# Set certificate path
+set CODESIGN_CERT=path\to\certificate.pfx
+set CODESIGN_PASSWORD=your_password
+
+# Build and sign
+python build.py --sign
+```
+
+Certificates can be purchased from providers like Sectigo, DigiCert, or SSL.com (~$70-200/year).
+
 ## Troubleshooting
 
 ### Driver not appearing in NINA
@@ -397,7 +458,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/RobofocusAscomAplaca/issues)
+- **Issues**: [GitHub Issues](https://github.com/samubd/RobofocusAscomAplaca/issues)
 - **Discussions**: NINA Discord, CloudyNights forum
 - **Pull Requests**: Always welcome!
 

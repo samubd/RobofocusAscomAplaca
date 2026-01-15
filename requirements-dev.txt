@@ -14,3 +14,6 @@ httpx>=0.25.0  # For testing FastAPI endpoints
 black>=23.0.0  # Code formatting
 pylint>=3.0.0  # Linting
 mypy>=1.5.0    # Type checking
+
+# Build tools
+pyinstaller>=6.0.0  # Create Windows executable

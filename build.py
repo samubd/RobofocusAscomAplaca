@@ -3,18 +3,24 @@
 Build script for creating Windows executable of Robofocus ASCOM Alpaca Driver.
 
 Usage:
-    python build.py
+    python build.py [--sign]
+
+Options:
+    --sign    Sign the executable with a code signing certificate
+              Requires signtool.exe and CODESIGN_CERT environment variable
 
 This script will:
 1. Clean previous build artifacts
 2. Run PyInstaller to create the executable
 3. Copy default configuration files to the dist folder
+4. Optionally sign the executable (if --sign is provided)
 """
 
 import os
 import shutil
 import subprocess
 import sys
+import argparse
 
 def clean_build():
     """Remove previous build artifacts."""
@@ -26,24 +32,25 @@ def clean_build():
             print(f"  Removing {dir_name}/")
             shutil.rmtree(dir_name)
 
-    print("✓ Clean complete\n")
+    print("[OK] Clean complete\n")
 
 def run_pyinstaller():
     """Run PyInstaller with the spec file."""
     print("Running PyInstaller...")
 
     result = subprocess.run(
-        ['pyinstaller', 'robofocus_alpaca.spec', '--clean'],
+        [sys.executable, '-m', 'PyInstaller', 'robofocus_alpaca.spec', '--clean'],
         capture_output=True,
         text=True
     )
 
     if result.returncode != 0:
-        print("✗ PyInstaller failed!")
+        print("[ERROR] PyInstaller failed!")
         print(result.stderr)
+        print(result.stdout)
         sys.exit(1)
 
-    print("✓ PyInstaller complete\n")
+    print("[OK] PyInstaller complete\n")
 
 def copy_config_files():
     """Copy default configuration files to dist folder."""
@@ -128,7 +135,7 @@ Troubleshooting:
 - For COM port issues, use the Scan button in Settings
 - Allow UDP port 32227 in Windows Firewall for NINA discovery
 
-For more information, visit: https://github.com/yourusername/RobofocusAscomAplaca
+For more information, visit: https://github.com/samubd/RobofocusAscomAplaca
 """
 
     readme_path = os.path.join(dist_dir, 'README.txt')
@@ -136,10 +143,69 @@ For more information, visit: https://github.com/yourusername/RobofocusAscomAplac
         f.write(readme_content)
 
     print(f"  Created {readme_path}")
-    print("✓ Configuration files copied\n")
+    print("[OK] Configuration files copied\n")
+
+def sign_executable():
+    """
+    Sign the executable with a code signing certificate.
+
+    Requires:
+    - signtool.exe (from Windows SDK)
+    - CODESIGN_CERT environment variable pointing to .pfx file
+    - CODESIGN_PASSWORD environment variable (optional, for password-protected certs)
+    """
+    print("Signing executable...")
+
+    cert_path = os.environ.get('CODESIGN_CERT')
+    if not cert_path:
+        print("[ERROR] CODESIGN_CERT environment variable not set!")
+        print("  Set it to the path of your .pfx certificate file")
+        return False
+
+    if not os.path.exists(cert_path):
+        print(f"[ERROR] Certificate file not found: {cert_path}")
+        return False
+
+    exe_path = os.path.join('dist', 'RobofocusAlpaca', 'RobofocusAlpaca.exe')
+    if not os.path.exists(exe_path):
+        print(f"[ERROR] Executable not found: {exe_path}")
+        return False
+
+    # Build signtool command
+    cmd = [
+        'signtool', 'sign',
+        '/f', cert_path,
+        '/t', 'http://timestamp.digicert.com',  # Timestamp server
+        '/fd', 'SHA256',
+        '/d', 'Robofocus ASCOM Alpaca Driver',
+    ]
+
+    # Add password if provided
+    password = os.environ.get('CODESIGN_PASSWORD')
+    if password:
+        cmd.extend(['/p', password])
+
+    cmd.append(exe_path)
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"[ERROR] Signing failed: {result.stderr}")
+            return False
+        print("[OK] Executable signed successfully\n")
+        return True
+    except FileNotFoundError:
+        print("[ERROR] signtool.exe not found!")
+        print("  Install Windows SDK or add signtool to PATH")
+        return False
 
 def main():
     """Main build process."""
+    parser = argparse.ArgumentParser(description='Build Robofocus ASCOM Alpaca Driver')
+    parser.add_argument('--sign', action='store_true',
+                        help='Sign the executable with a code signing certificate')
+    args = parser.parse_args()
+
     print("=" * 60)
     print("Robofocus ASCOM Alpaca Driver - Build Script")
     print("=" * 60)
@@ -147,9 +213,10 @@ def main():
 
     # Check if PyInstaller is installed
     try:
-        subprocess.run(['pyinstaller', '--version'], capture_output=True, check=True)
+        subprocess.run([sys.executable, '-m', 'PyInstaller', '--version'],
+                       capture_output=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("✗ PyInstaller is not installed!")
+        print("[ERROR] PyInstaller is not installed!")
         print("  Install it with: pip install pyinstaller")
         sys.exit(1)
 
@@ -157,11 +224,22 @@ def main():
     run_pyinstaller()
     copy_config_files()
 
+    # Sign if requested
+    if args.sign:
+        if not sign_executable():
+            print("[WARN] Build completed but signing failed")
+            sys.exit(1)
+
     print("=" * 60)
-    print("✓ Build complete!")
+    print("[OK] Build complete!")
     print("=" * 60)
     print()
     print(f"Executable location: dist\\RobofocusAlpaca\\RobofocusAlpaca.exe")
+    if not args.sign:
+        print()
+        print("Note: Executable is NOT signed. To sign, run:")
+        print("  set CODESIGN_CERT=path\\to\\certificate.pfx")
+        print("  python build.py --sign")
     print()
     print("To create an installer, use Inno Setup with installer.iss")
     print()

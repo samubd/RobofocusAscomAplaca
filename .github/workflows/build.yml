@@ -1,0 +1,127 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable
+        run: python build.py
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+          Compress-Archive -Path "dist\RobofocusAlpaca\*" -DestinationPath "RobofocusAlpaca_v${version}_Portable.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RobofocusAlpaca_Portable
+          path: RobofocusAlpaca_v*_Portable.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: RobofocusAlpaca_Portable
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Extract release notes from CHANGELOG
+        id: changelog
+        run: |
+          # Extract the section for this version from CHANGELOG.md
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          echo "Extracting notes for version $VERSION"
+
+          # Create release body
+          cat << 'EOF' > release_body.md
+          ## Downloads
+
+          | File | Description |
+          |------|-------------|
+          | `RobofocusAlpaca_v${{ steps.get_version.outputs.VERSION }}_Portable.zip` | Portable version - extract and run |
+
+          ## Quick Start
+
+          1. Download the portable ZIP
+          2. Extract to any folder
+          3. Run `RobofocusAlpaca.exe`
+          4. If Windows SmartScreen appears, click "More info" → "Run anyway"
+          5. Open NINA and use Alpaca Discovery to find the focuser
+          6. Connect and enjoy!
+
+          ## System Requirements
+
+          - Windows 10/11
+          - No Python installation needed
+          - No .NET Framework required
+
+          ## Note
+
+          The executable is not digitally signed. Windows may show a security warning on first run.
+          This is normal for open-source software. The source code is fully available for review.
+
+          See [CHANGELOG.md](CHANGELOG.md) for full details of what's included in this release.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Robofocus ASCOM Alpaca Driver v${{ steps.get_version.outputs.VERSION }}
+          body_path: release_body.md
+          draft: false
+          prerelease: false
+          files: |
+            RobofocusAlpaca_v*_Portable.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

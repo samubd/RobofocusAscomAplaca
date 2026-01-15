@@ -56,10 +56,10 @@ dev = [
 robofocus-alpaca = "robofocus_alpaca.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/robofocus-alpaca"
-Documentation = "https://github.com/yourusername/robofocus-alpaca#readme"
-Repository = "https://github.com/yourusername/robofocus-alpaca"
-Issues = "https://github.com/yourusername/robofocus-alpaca/issues"
+Homepage = "https://github.com/samubd/RobofocusAscomAplaca"
+Documentation = "https://github.com/samubd/RobofocusAscomAplaca#readme"
+Repository = "https://github.com/samubd/RobofocusAscomAplaca"
+Issues = "https://github.com/samubd/RobofocusAscomAplaca/issues"
 
 [tool.black]
 line-length = 100

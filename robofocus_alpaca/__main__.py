@@ -14,6 +14,24 @@ from pathlib import Path
 import uvicorn
 from fastapi.staticfiles import StaticFiles
 
+
+def get_base_path() -> Path:
+    """
+    Get the base path for application resources.
+
+    Works correctly both when running from source and when
+    bundled as a PyInstaller executable.
+
+    Returns:
+        Path to the application directory.
+    """
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller bundle
+        return Path(sys._MEIPASS)
+    else:
+        # Running from source
+        return Path(__file__).parent
+
 from robofocus_alpaca.config.loader import load_config, ConfigurationError
 from robofocus_alpaca.config.models import AppConfig, SerialConfig
 from robofocus_alpaca.config.user_settings import init_user_settings, get_user_settings
@@ -189,10 +207,11 @@ def main():
     app.include_router(gui_router)
 
     # Mount unified static files for web GUI (works in both modes)
-    static_dir = Path(__file__).parent / "static"
+    # Use get_base_path() to support both source and PyInstaller bundle
+    static_dir = get_base_path() / "static"
     if static_dir.exists():
         app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
-        logger.info("Web GUI enabled")
+        logger.info(f"Web GUI enabled (static dir: {static_dir})")
     else:
         logger.warning(f"Static directory not found: {static_dir}")
 
