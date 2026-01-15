@@ -111,11 +111,15 @@ def main():
         logger.info(f"Using saved min_step: {user_settings.min_step}")
         config.focuser.min_step = user_settings.min_step
 
-    # Determine mode: user preference overrides config.json
+    # Determine mode: user preference (if set) overrides config.json
     # This allows runtime mode switching via GUI
-    use_simulator = user_settings.use_simulator
-    if use_simulator != config.simulator.enabled:
-        logger.info(f"User preference overrides config: use_simulator={use_simulator}")
+    # If user_settings.use_simulator is None, use config.json as default
+    if user_settings.use_simulator is not None:
+        use_simulator = user_settings.use_simulator
+        logger.info(f"Using user preference: use_simulator={use_simulator}")
+    else:
+        use_simulator = config.simulator.enabled
+        logger.info(f"Using config.json: simulator.enabled={use_simulator}")
 
     # Create protocol instance (simulator or real hardware)
     if use_simulator:

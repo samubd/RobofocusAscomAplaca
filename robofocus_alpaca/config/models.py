@@ -180,9 +180,9 @@ class UserSettings(BaseModel):
         le=65535,
         description="Software minimum position limit"
     )
-    use_simulator: bool = Field(
-        default=False,
-        description="Use simulator mode instead of real hardware"
+    use_simulator: Optional[bool] = Field(
+        default=None,
+        description="Use simulator mode instead of real hardware. None = use config.json"
     )
 
     class Config:

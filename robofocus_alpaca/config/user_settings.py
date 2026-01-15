@@ -49,6 +49,13 @@ class UserSettingsManager:
             with open(self._path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
+            # Migration: convert old use_simulator=false to None
+            # Old default was False, now we use None to mean "use config.json"
+            # If use_simulator is False, treat it as "never explicitly set"
+            if data.get("use_simulator") is False:
+                logger.info("Migrating old user_settings: use_simulator=false -> None")
+                data["use_simulator"] = None
+
             settings = UserSettings(**data)
             logger.info(f"User settings loaded from {self._path}")
             return settings
@@ -72,6 +79,10 @@ class UserSettingsManager:
         """
         try:
             data = self._settings.model_dump()
+
+            # Don't save use_simulator if None (let config.json be the source of truth)
+            if data.get("use_simulator") is None:
+                del data["use_simulator"]
 
             with open(self._path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
@@ -132,8 +143,8 @@ class UserSettingsManager:
             logger.info(f"Saved min_step: {value}")
 
     @property
-    def use_simulator(self) -> bool:
-        """Get simulator mode preference."""
+    def use_simulator(self) -> Optional[bool]:
+        """Get simulator mode preference. None means use config.json."""
         return self._settings.use_simulator
 
     @use_simulator.setter
