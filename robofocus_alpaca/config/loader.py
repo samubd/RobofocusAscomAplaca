@@ -20,6 +20,32 @@ class ConfigurationError(Exception):
     pass
 
 
+def _create_default_config(config: AppConfig, config_path: Path) -> None:
+    """
+    Create a default config.json file with helpful documentation.
+
+    Args:
+        config: Default AppConfig to save.
+        config_path: Path where to create the config file.
+    """
+    try:
+        config_dict = config.model_dump()
+
+        # Add a comment at the top
+        save_data = {
+            "_comment": "Robofocus Alpaca Driver Configuration (auto-generated). See config.example.json for all options.",
+            **config_dict
+        }
+
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(save_data, f, indent=2)
+
+        logger.info(f"Created default config file: {config_path}")
+
+    except IOError as e:
+        logger.warning(f"Failed to create default config file: {e}")
+
+
 def load_config(path: Optional[str] = None) -> AppConfig:
     """
     Load configuration from JSON file.
@@ -39,12 +65,14 @@ def load_config(path: Optional[str] = None) -> AppConfig:
 
     config_path = Path(path)
 
-    # If file doesn't exist, use defaults
+    # If file doesn't exist, create with defaults
     if not config_path.exists():
-        logger.warning(
-            f"Config file not found: {config_path}. Using default configuration."
+        logger.info(
+            f"Config file not found: {config_path}. Creating with default configuration."
         )
-        return AppConfig()
+        config = AppConfig()
+        _create_default_config(config, config_path)
+        return config
 
     # Read JSON file
     try:

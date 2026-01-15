@@ -42,8 +42,10 @@ class UserSettingsManager:
     def _load(self) -> UserSettings:
         """Load settings from file, or create defaults if not found."""
         if not self._path.exists():
-            logger.info(f"User settings file not found: {self._path}. Using defaults.")
-            return UserSettings()
+            logger.info(f"User settings file not found: {self._path}. Creating with defaults.")
+            settings = UserSettings()
+            self._create_default_file(settings)
+            return settings
 
         try:
             with open(self._path, "r", encoding="utf-8") as f:
@@ -70,6 +72,31 @@ class UserSettingsManager:
             logger.warning(f"Failed to read {self._path}: {e}. Using defaults.")
             return UserSettings()
 
+    def _create_default_file(self, settings: UserSettings) -> None:
+        """
+        Create a new settings file with defaults and helpful comments.
+
+        Since JSON doesn't support comments, we create a clean JSON file
+        and the field descriptions are in the model itself.
+        """
+        try:
+            data = {
+                "_comment": "Robofocus Alpaca Driver - User Settings (auto-generated)",
+                "last_port": settings.last_port,
+                "max_increment": settings.max_increment,
+                "min_step": settings.min_step,
+                # Note: use_simulator is intentionally omitted when None
+                # to let config.json be the source of truth
+            }
+
+            with open(self._path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+
+            logger.info(f"Created default user settings file: {self._path}")
+
+        except IOError as e:
+            logger.warning(f"Failed to create default settings file: {e}")
+
     def save(self) -> bool:
         """
         Save current settings to file.
@@ -84,8 +111,14 @@ class UserSettingsManager:
             if data.get("use_simulator") is None:
                 del data["use_simulator"]
 
+            # Add helpful comment for users
+            save_data = {
+                "_comment": "Robofocus Alpaca Driver - User Settings",
+                **data
+            }
+
             with open(self._path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
+                json.dump(save_data, f, indent=2)
 
             logger.debug(f"User settings saved to {self._path}")
             return True
