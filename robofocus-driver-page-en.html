@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robofocus ASCOM Alpaca Driver - Professional Driver for Astrophotography</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary-color: #7c3aed;
+            --accent-color: #06b6d4;
+            --text-color: #1f2937;
+            --text-light: #6b7280;
+            --bg-light: #f9fafb;
+            --bg-white: #ffffff;
+            --border-color: #e5e7eb;
+            --success-color: #10b981;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--text-color);
+            line-height: 1.6;
+            background-color: var(--bg-light);
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        header p {
+            font-size: 1.25rem;
+            opacity: 0.95;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Navigation */
+        nav {
+            background-color: var(--bg-white);
+            padding: 1rem 2rem;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        nav a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Sections */
+        section {
+            background-color: var(--bg-white);
+            padding: 3rem;
+            margin-bottom: 3rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        section h2 {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        section h3 {
+            font-size: 1.5rem;
+            color: var(--text-color);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        section p,
+        section li {
+            color: var(--text-light);
+            font-size: 1.05rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Download Section */
+        .download-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .download-section h2 {
+            color: white;
+            border-bottom-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .download-section p {
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .download-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary {
+            background-color: white;
+            color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background-color: var(--bg-light);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow);
+        }
+
+        .feature-card h4 {
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            margin-bottom: 0;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Steps */
+        .step {
+            background-color: var(--bg-light);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            background-color: var(--accent-color);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 2rem;
+            font-weight: 700;
+            margin-right: 1rem;
+        }
+
+        /* Screenshot placeholder */
+        .screenshot-placeholder {
+            background-color: var(--bg-light);
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 3rem;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .screenshot-placeholder p {
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        /* Code blocks */
+        code {
+            background-color: var(--bg-light);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+        }
+
+        pre {
+            background-color: var(--text-color);
+            color: #f9fafb;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Lists */
+        ul,
+        ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--text-color);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            header p {
+                font-size: 1.1rem;
+            }
+
+            section {
+                padding: 2rem 1.5rem;
+            }
+
+            section h2 {
+                font-size: 1.75rem;
+            }
+
+            nav ul {
+                gap: 1rem;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .download-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background-color: var(--success-color);
+            color: white;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .info-box {
+            background-color: #eff6ff;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 8px;
+        }
+
+        .info-box strong {
+            color: var(--primary-color);
+        }
+
+        /* Platform Tabs */
+        .platform-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .platform-tab {
+            padding: 1rem 2rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-light);
+            transition: all 0.3s;
+        }
+
+        .platform-tab:hover {
+            color: var(--primary-color);
+        }
+
+        .platform-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .platform-content {
+            display: none;
+        }
+
+        .platform-content.active {
+            display: block;
+        }
+
+        .platform-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Robofocus ASCOM Alpaca Driver</h1>
+        <p>Modern driver for controlling Robofocus electronic focusers</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#intro">What is it</a></li>
+            <li><a href="#howto">How to Use</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#examples">Examples</a></li>
+            <li><a href="#download">Download</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- Section 1: What is it -->
+        <section id="intro">
+            <h2>What is the Robofocus ASCOM Alpaca Driver</h2>
+
+            <p>The <strong>Robofocus ASCOM Alpaca Driver</strong> is a modern, full-featured driver for controlling
+                Robofocus electronic focusers through the <strong>ASCOM Alpaca v1</strong> protocol.</p>
+
+            <p>This driver represents a cutting-edge solution for astrophotography, enabling seamless integration of
+                your Robofocus focuser with major imaging software like <strong>N.I.N.A.</strong> (Nighttime Imaging 'N'
+                Astronomy), SGP, APT, and any other ASCOM Alpaca-compatible software.</p>
+
+            <div class="info-box">
+                <strong>Why ASCOM Alpaca?</strong>
+                <p>ASCOM Alpaca is the new HTTP/REST-based communication standard that replaces the old COM protocol. It
+                    works on any platform, is more reliable, and allows remote access to your focuser from different
+                    devices on your local network.</p>
+            </div>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li><strong>Fully Open Source:</strong> Source code available on GitHub, developed with Python and
+                    FastAPI</li>
+                <li><strong>Zero-Config Installation:</strong> Windows installer that automatically configures
+                    everything, including firewall</li>
+                <li><strong>Hardware + Simulator:</strong> Works with real Robofocus hardware or in simulation mode for
+                    testing</li>
+                <li><strong>Web Control Panel:</strong> Modern web interface for manual control and configuration</li>
+                <li><strong>Auto-Discovery:</strong> NINA and other software automatically detect the driver on the
+                    network</li>
+                <li><strong>Reliable and Robust:</strong> Error handling, automatic retries, intelligent position
+                    caching</li>
+            </ul>
+        </section>
+
+        <!-- Section 2: How to Use -->
+        <section id="howto">
+            <h2>How to Use</h2>
+
+            <p>The Robofocus driver can run on <strong>Windows or Linux</strong> systems. NINA and other clients can connect to it from any machine on your network.</p>
+
+            <h3>Installation - Choose Your Platform</h3>
+
+            <div class="platform-tabs">
+                <button class="platform-tab active" onclick="switchPlatform('windows')">
+                    <span class="platform-icon">🪟</span>Windows
+                </button>
+                <button class="platform-tab" onclick="switchPlatform('linux')">
+                    <span class="platform-icon">🐧</span>Linux
+                </button>
+            </div>
+
+            <!-- Windows Installation -->
+            <div id="windows-content" class="platform-content active">
+                <h4>Windows Installation (Recommended for NINA users)</h4>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>Download the installer</strong> from the <a href="#download">Download</a> section (file
+                    <code>RobofocusAlpaca_Setup_x.x.x.exe</code>)
+            </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <strong>Run the installer</strong> and follow the setup wizard. The installer will automatically
+                    configure:
+                    <ul>
+                        <li>The driver in the <code>C:\Program Files\RobofocusAlpaca</code> folder</li>
+                        <li>Shortcuts in Start Menu and Desktop</li>
+                        <li>Windows Firewall to enable automatic discovery (UDP port 32227)</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <strong>Launch the driver</strong> from the Start Menu or Desktop shortcut
+                </div>
+
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <strong>Configure the driver</strong> by opening your browser at <code>http://localhost:5000</code>
+                </div>
+
+                <div class="info-box">
+                    <strong>Alternative:</strong> Use the portable version (<code>RobofocusAlpaca_Portable.zip</code>) if you don't want to install. Just extract and run <code>RobofocusAlpaca.exe</code>.
+                </div>
+            </div>
+
+            <!-- Linux Installation -->
+            <div id="linux-content" class="platform-content">
+                <h4>Linux Installation (Headless server or Raspberry Pi)</h4>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>Install Python 3.8+</strong> (usually pre-installed on most distributions)
+                    <pre><code># Debian/Ubuntu
+sudo apt update
+sudo apt install python3 python3-pip python3-venv
+
+# Fedora/RHEL
+sudo dnf install python3 python3-pip
+
+# Arch Linux
+sudo pacman -S python python-pip</code></pre>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <strong>Clone the repository</strong> and navigate to it
+                    <pre><code>git clone https://github.com/samubd/RobofocusAscomAplaca.git
+cd RobofocusAscomAplaca</code></pre>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <strong>Create a virtual environment</strong> (recommended)
+                    <pre><code>python3 -m venv venv
+source venv/bin/activate</code></pre>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <strong>Install dependencies</strong>
+                    <pre><code>pip install -r requirements.txt</code></pre>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">5</span>
+                    <strong>Run the driver</strong>
+                    <pre><code>python3 -m robofocus_alpaca</code></pre>
+                    <p>The server will start on <code>http://0.0.0.0:5000</code> (accessible from other machines on the network)</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>Serial Port Permissions:</strong> Add your user to the <code>dialout</code> group to access serial ports without sudo:
+                    <pre><code>sudo usermod -a -G dialout $USER
+# Logout and login again for changes to take effect</code></pre>
+                </div>
+
+                <div class="info-box">
+                    <strong>Run as a Service:</strong> To run the driver automatically on boot, create a systemd service:
+                    <pre><code>sudo nano /etc/systemd/system/robofocus-alpaca.service</code></pre>
+                    Add:
+                    <pre><code>[Unit]
+Description=Robofocus ASCOM Alpaca Driver
+After=network.target
+
+[Service]
+Type=simple
+User=yourusername
+WorkingDirectory=/path/to/RobofocusAscomAplaca
+ExecStart=/path/to/RobofocusAscomAplaca/venv/bin/python -m robofocus_alpaca
+Restart=always
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+                    Enable and start:
+                    <pre><code>sudo systemctl enable robofocus-alpaca
+sudo systemctl start robofocus-alpaca
+sudo systemctl status robofocus-alpaca</code></pre>
+                </div>
+
+                <div class="info-box">
+                    <strong>Firewall Configuration:</strong> If you have a firewall enabled, allow incoming connections on port 5000 (HTTP) and 32227 (UDP discovery):
+                    <pre><code># UFW (Ubuntu/Debian)
+sudo ufw allow 5000/tcp
+sudo ufw allow 32227/udp
+
+# Firewalld (Fedora/RHEL)
+sudo firewall-cmd --permanent --add-port=5000/tcp
+sudo firewall-cmd --permanent --add-port=32227/udp
+sudo firewall-cmd --reload</code></pre>
+                </div>
+            </div>
+
+            <h3>Initial Configuration</h3>
+            <p><em>(Same for both Windows and Linux - use the web interface)</em></p>
+
+            <p>On first run, the driver will guide you through the configuration:</p>
+
+            <ol>
+                <li><strong>Choose mode:</strong>
+                    <ul>
+                        <li><strong>Hardware:</strong> to use your real Robofocus connected to the serial port</li>
+                        <li><strong>Simulator:</strong> to test without hardware (ideal for configuring NINA before
+                            going to the field)</li>
+                    </ul>
+                </li>
+                <li><strong>Select COM port</strong> (Hardware mode only):
+                    <ul>
+                        <li>Click "Scan" to automatically detect your Robofocus</li>
+                        <li>Or manually select the COM port from the list</li>
+                    </ul>
+                </li>
+                <li><strong>Connect</strong> by clicking the "Connect" button</li>
+                <li><strong>Calibrate the focuser</strong> (if needed):
+                    <ul>
+                        <li>Set the zero reference point</li>
+                        <li>Configure maximum extension</li>
+                        <li>Set backlash (if your model supports it)</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>Using with NINA</h3>
+
+            <ol>
+                <li>Start the Robofocus driver</li>
+                <li>Open NINA</li>
+                <li>Go to <strong>Equipment → Focuser</strong></li>
+                <li>Click <strong>Alpaca Discovery</strong> (NINA will automatically detect the driver)</li>
+                <li>Select <strong>Robofocus</strong> from the list</li>
+                <li>Click <strong>Choose → Connect</strong></li>
+                <li>Test functionality with "Move to" button or run Autofocus</li>
+            </ol>
+
+            <div class="info-box">
+                <strong>Tip:</strong> If automatic discovery doesn't work, you can manually add the address
+                <code>http://localhost:5000</code> in NINA.
+            </div>
+        </section>
+
+        <!-- Section 3: Features -->
+        <section id="features">
+            <h2>Detailed Features</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h4>ASCOM Alpaca v1 Compliant</h4>
+                    <p>Full implementation of the ASCOM Alpaca API v1 standard, ensuring complete compatibility with all
+                        modern astrophotography software.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h4>Real Hardware Support</h4>
+                    <p>Direct RS-232 serial communication with Robofocus focusers. Supports all COM ports, including
+                        COM10+, COM12+, etc.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🎮</div>
+                    <h4>Built-in Simulator</h4>
+                    <p>Full virtual focuser for testing imaging sequences without hardware. Simulates temperature,
+                        movement, and all real features.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h4>Hot-Swap Hardware/Simulator</h4>
+                    <p>Switch from hardware to simulator mode (and vice versa) via the web interface, without restarting
+                        the driver. Perfect for quick testing.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📡</div>
+                    <h4>UDP Discovery</h4>
+                    <p>NINA and other software automatically detect the driver on the network via UDP broadcast on port
+                        32227. Zero manual configuration.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💻</div>
+                    <h4>Web Control Panel</h4>
+                    <p>Modern, responsive web interface for manual control, calibration, and real-time monitoring.
+                        Accessible from any browser.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h4>Backlash Compensation</h4>
+                    <p>Full support for backlash compensation following INDI convention (signed values: +OUT, -IN).
+                        Values from -255 to +255 steps.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🌡️</div>
+                    <h4>Temperature Monitoring</h4>
+                    <p>Read the integrated temperature sensor in the focuser (if available), with real-time reporting to
+                        NINA.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h4>COM Port Auto-Discovery</h4>
+                    <p>Automatic scan of all COM ports to detect your Robofocus. Identifies the correct device without
+                        manual attempts.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💾</div>
+                    <h4>Persistent Settings</h4>
+                    <p>Automatic saving of user preferences: last COM port used, movement limits, preferred mode.
+                        Everything is remembered between sessions.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h4>Real-Time Movement Monitoring</h4>
+                    <p>Real-time position tracking with intelligent caching to reduce serial queries and improve
+                        performance.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <h4>Protocol Logging</h4>
+                    <p>Detailed logging of all serial commands (sent and received) for debugging. Viewable in real-time
+                        via web GUI.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h4>Thread-Safe</h4>
+                    <p>Correct handling of concurrent API requests. The driver can be queried by multiple software
+                        simultaneously without conflicts.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⏱️</div>
+                    <h4>Hardware Timing Management</h4>
+                    <p>Automatic settling time (150ms) after movements to prevent timeout in position queries. Solves a
+                        known Robofocus hardware limitation.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h4>Backlash Query Caching</h4>
+                    <p>During movements, backlash queries return cached values to avoid interrupting the operation with
+                        extra serial commands.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h4>Hardware Config Auto-Save</h4>
+                    <p>On connection, the driver reads and automatically saves: firmware version, max travel, backlash.
+                        These values are stored for future sessions.</p>
+                </div>
+            </div>
+
+            <h3>Web Panel Features</h3>
+
+            <p>The web control panel (<code>http://localhost:5000</code>) offers:</p>
+
+            <ul>
+                <li><strong>Status Dashboard:</strong> Current position, temperature, connection status, active mode
+                    (Hardware/Simulator)</li>
+                <li><strong>Quick Step Controls:</strong> Buttons for fast movements (±1, ±10, ±100, ±1000 steps)</li>
+                <li><strong>Absolute Positioning:</strong> Input field to go to a specific position with limit
+                    validation</li>
+                <li><strong>Emergency HALT:</strong> Immediate stop button to halt any ongoing movement</li>
+                <li><strong>Calibration:</strong>
+                    <ul>
+                        <li>Set Zero: defines current position as zero reference</li>
+                        <li>Set Max Extension: sets maximum travel limit (saved to hardware)</li>
+                        <li>Set Min Position: sets minimum limit (software-side)</li>
+                        <li>Set Max Increment: limits maximum single move (safety)</li>
+                        <li>Set Backlash: configure backlash compensation (±255 steps, saved to hardware)</li>
+                    </ul>
+                </li>
+                <li><strong>Protocol Logs:</strong> Real-time view of serial commands sent/received, with filters and
+                    statistics</li>
+            </ul>
+        </section>
+
+        <!-- Section 4: Usage Examples -->
+        <section id="examples">
+            <h2>Usage Examples</h2>
+
+            <h3>Example 1: Autofocus Sequence in NINA</h3>
+
+            <p>The driver integrates seamlessly with NINA's autofocus. Here's how it looks in action:</p>
+
+            <div class="screenshot-placeholder">
+                <p>📸 You can insert a screenshot of NINA with Robofocus focuser connected here</p>
+                <p><em>Screenshot: NINA Equipment panel with Robofocus connected and current position visible</em></p>
+            </div>
+
+            <p>During autofocus, NINA:</p>
+            <ol>
+                <li>Moves the focuser through a series of positions</li>
+                <li>Acquires an image at each position</li>
+                <li>Calculates the HFR (Half Flux Radius) to determine the best focus</li>
+                <li>Positions the focuser at the optimal position</li>
+            </ol>
+
+            <p>The driver handles all movements smoothly, without interruptions or timeout errors.</p>
+
+            <div class="screenshot-placeholder">
+                <p>📸 You can insert a screenshot of NINA's autofocus graph (V-curve) here</p>
+                <p><em>Screenshot: Autofocus result with HFR curve and optimal position found</em></p>
+            </div>
+
+            <h3>Example 2: Manual Control from Web Panel</h3>
+
+            <p>The web panel allows manual focuser control during the setup phase:</p>
+
+            <div class="screenshot-placeholder">
+                <p>📸 You can insert a screenshot of the Web Control Panel here</p>
+                <p><em>Screenshot: Web control panel with movement buttons and position display</em></p>
+            </div>
+
+            <p>Typical web panel operations:</p>
+            <ul>
+                <li><strong>Initial setup:</strong> Move the focuser to initial position and set zero</li>
+                <li><strong>Backlash calibration:</strong> Test forward/backward movements and adjust compensation value
+                </li>
+                <li><strong>Movement range test:</strong> Verify the focuser's maximum travel</li>
+                <li><strong>Debugging:</strong> Monitor protocol logs to diagnose any issues</li>
+            </ul>
+
+            <h3>Example 3: Simulator Mode Configuration</h3>
+
+            <div class="screenshot-placeholder">
+                <p>📸 You can insert a screenshot of the Settings page in Simulator mode here</p>
+                <p><em>Screenshot: Setup page with Simulator mode selected</em></p>
+            </div>
+
+            <p>Simulator mode is perfect for:</p>
+            <ul>
+                <li>Configuring NINA at home before going to the field</li>
+                <li>Testing imaging sequences without consuming power or moving hardware</li>
+                <li>Experimenting with different autofocus settings</li>
+                <li>Training with the software without risks</li>
+            </ul>
+
+            <h3>Example 4: NINA Alpaca Discovery</h3>
+
+            <div class="screenshot-placeholder">
+                <p>📸 You can insert a screenshot of NINA Alpaca Discovery showing the detected driver here</p>
+                <p><em>Screenshot: NINA "Choose Focuser" window with Robofocus Alpaca in the detected devices list</em>
+                </p>
+            </div>
+
+            <p>When you click "Alpaca Discovery" in NINA, the driver is automatically detected and appears in the list
+                with:</p>
+            <ul>
+                <li>Device name: <strong>Robofocus</strong></li>
+                <li>Type: <strong>Focuser</strong></li>
+                <li>Address: <strong>http://localhost:5000/api/v1/focuser/0</strong></li>
+            </ul>
+
+            <h3>Example 5: Protocol Logs</h3>
+
+            <div class="screenshot-placeholder">
+                <p>📸 You can insert a screenshot of the Protocol Logs page here</p>
+                <p><em>Screenshot: Real-time display of serial commands with timestamps and checksums</em></p>
+            </div>
+
+            <p>The logs show in real-time:</p>
+            <ul>
+                <li>Commands sent to Robofocus (e.g., <code>FG000000</code> for position query)</li>
+                <li>Responses received from hardware (e.g., <code>FG004235</code> = position 4235)</li>
+                <li>Calculated and validated checksums</li>
+                <li>Any errors or retries</li>
+                <li>Asynchronous messages during movement ('I' = inward, 'O' = outward, 'F' = finished)</li>
+            </ul>
+
+            <p>This is essential for debugging communication issues with the hardware.</p>
+        </section>
+
+        <!-- Section 5: Download -->
+        <section id="download" class="download-section">
+            <h2>Download and Source Code</h2>
+
+            <p>The driver is completely free and open source, available under the MIT license.</p>
+
+            <div class="download-buttons">
+                <a href="https://github.com/samubd/RobofocusAscomAplaca/releases/latest" class="btn btn-primary">
+                    ⬇️ Download Latest Version
+                </a>
+                <a href="https://github.com/samubd/RobofocusAscomAplaca" class="btn btn-secondary">
+                    📂 GitHub Repository
+                </a>
+            </div>
+
+            <h3 style="color: white; margin-top: 3rem;">Download Options</h3>
+
+            <div style="text-align: left; max-width: 800px; margin: 0 auto;">
+                <div class="step">
+                    <strong>Windows Installer (Recommended)</strong>
+                    <p>Complete package with automatic installer. Zero configuration, includes everything needed.</p>
+                    <p>File: <code>RobofocusAlpaca_Setup_x.x.x.exe</code></p>
+                </div>
+
+                <div class="step">
+                    <strong>Portable Executable</strong>
+                    <p>Portable version without installation. Extract and run. Ideal for USB use or if you don't want to
+                        install.</p>
+                    <p>File: <code>RobofocusAlpaca_Portable.zip</code></p>
+                </div>
+
+                <div class="step">
+                    <strong>Source Code</strong>
+                    <p>Clone the repository and run from Python source. For developers or those who want to customize.
+                    </p>
+                    <pre><code>git clone https://github.com/samubd/RobofocusAscomAplaca.git
+cd RobofocusAscomAplaca
+pip install -r requirements.txt
+python -m robofocus_alpaca</code></pre>
+                </div>
+            </div>
+
+            <div class="info-box"
+                style="background-color: rgba(255, 255, 255, 0.1); border-left-color: white; margin-top: 2rem;">
+                <p style="color: white;"><strong style="color: white;">Security Note:</strong> The executable is not
+                    digitally signed. Windows may show a SmartScreen warning on first run. This is normal for open
+                    source software. The source code is fully available for review on GitHub.</p>
+            </div>
+
+            <h3 style="color: white; margin-top: 3rem;">System Requirements</h3>
+
+            <ul style="text-align: left; max-width: 600px; margin: 1rem auto;">
+                <li>Windows 10/11 (recommended for NINA integration)</li>
+                <li>Robofocus focuser with RS-232 serial connection</li>
+                <li>Available COM port (USB-to-Serial supported)</li>
+                <li>Python 3.8+ (only for running from source)</li>
+            </ul>
+
+            <h3 style="color: white; margin-top: 3rem;">Useful Links</h3>
+
+            <div style="text-align: left; max-width: 600px; margin: 1rem auto;">
+                <ul>
+                    <li><a href="https://github.com/samubd/RobofocusAscomAplaca/releases"
+                            style="color: white; text-decoration: underline;">Release Notes and Changelog</a></li>
+                    <li><a href="https://github.com/samubd/RobofocusAscomAplaca/issues"
+                            style="color: white; text-decoration: underline;">Report a Bug or Request a Feature</a></li>
+                    <li><a href="https://github.com/samubd/RobofocusAscomAplaca/blob/main/README.md"
+                            style="color: white; text-decoration: underline;">Full Technical Documentation</a></li>
+                    <li><a href="https://github.com/samubd/RobofocusAscomAplaca/blob/main/LICENSE"
+                            style="color: white; text-decoration: underline;">MIT License</a></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Extra Section: FAQ/Support -->
+        <section>
+            <h2>Support and Troubleshooting</h2>
+
+            <h3>Driver doesn't appear in NINA</h3>
+            <ul>
+                <li>Verify that the driver is running</li>
+                <li>Check Windows Firewall (UDP port 32227 must be open)</li>
+                <li>Try manually adding <code>http://localhost:5000</code> in NINA</li>
+                <li>Check logs in <code>robofocus_alpaca.log</code></li>
+            </ul>
+
+            <h3>Timeout errors during movement</h3>
+            <p>Since version 1.0, this issue has been resolved with an automatic settling delay (150ms) after each
+                movement. If it persists:</p>
+            <ul>
+                <li>Verify that the serial cable is properly connected</li>
+                <li>Check that the COM port is correct</li>
+                <li>Try reducing the focuser movement speed</li>
+            </ul>
+
+            <h3>COM port not found</h3>
+            <ul>
+                <li>Verify that the Robofocus is powered on and connected</li>
+                <li>Check in Windows Device Manager for the COM port number</li>
+                <li>Use the "Scan" button in the Settings page to automatically detect</li>
+                <li>Some USB-to-Serial adapters require specific drivers</li>
+            </ul>
+
+            <h3>Where to report bugs or request new features</h3>
+            <p>Open an issue on GitHub: <a
+                    href="https://github.com/samubd/RobofocusAscomAplaca/issues">https://github.com/samubd/RobofocusAscomAplaca/issues</a>
+            </p>
+
+            <h3>Community and Discussions</h3>
+            <ul>
+                <li><strong>NINA Discord:</strong> Channel for support and discussions with other NINA users</li>
+                <li><strong>CloudyNights Forum:</strong> Astrophotography section and technical discussions</li>
+                <li><strong>GitHub Discussions:</strong> For general questions and sharing experiences</li>
+            </ul>
+        </section>
+    </div>
+
+    <footer>
+        <p>Developed by <strong>Samuele Vecchi</strong> in collaboration with <strong>Claude Sonnet 4.5</strong></p>
+        <p>MIT License - Open Source and free</p>
+        <p style="margin-top: 1rem;">
+            <a href="https://github.com/samubd/RobofocusAscomAplaca">GitHub</a> |
+            <a href="https://github.com/samubd/RobofocusAscomAplaca/releases">Releases</a> |
+            <a href="https://github.com/samubd/RobofocusAscomAplaca/issues">Issues</a>
+        </p>
+        <p style="margin-top: 1rem; font-size: 0.9rem;">Made with ❤️ for the astrophotography community</p>
+    </footer>
+
+    <script>
+        function switchPlatform(platform) {
+            // Hide all platform contents
+            document.querySelectorAll('.platform-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Deactivate all tabs
+            document.querySelectorAll('.platform-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected platform content
+            document.getElementById(platform + '-content').classList.add('active');
+
+            // Activate selected tab
+            event.target.closest('.platform-tab').classList.add('active');
+        }
+    </script>
+</body>
+
+</html>
