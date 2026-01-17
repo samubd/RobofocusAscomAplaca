@@ -135,6 +135,26 @@ class SerialProtocolInterface(ABC):
         pass
 
     @abstractmethod
+    def wait_for_movement_end(self, timeout: float = 300.0) -> int:
+        """
+        Wait for movement to finish, reading async chars.
+
+        Blocking method that reads movement characters (I/O) until
+        movement completes (receives F + position packet).
+
+        Args:
+            timeout: Maximum time to wait in seconds (default 5 minutes).
+
+        Returns:
+            Final position from hardware.
+
+        Raises:
+            NotConnectedError: If not connected.
+            SerialTimeoutError: If movement doesn't complete within timeout.
+        """
+        pass
+
+    @abstractmethod
     def get_backlash(self) -> tuple[int, int]:
         """
         Read current backlash compensation settings.
@@ -184,6 +204,23 @@ class SerialProtocolInterface(ABC):
 
         Args:
             value: Max position to store in hardware (1-65535).
+
+        Raises:
+            NotConnectedError: If not connected.
+            ValueError: If value out of range.
+        """
+        pass
+
+    @abstractmethod
+    def sync_position(self, value: int) -> None:
+        """
+        Sync/set the hardware position counter to a specific value.
+
+        This does NOT move the focuser - it sets the internal counter.
+        Used for calibration (e.g., "Set as Zero").
+
+        Args:
+            value: Position value to set (0-999999).
 
         Raises:
             NotConnectedError: If not connected.

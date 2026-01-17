@@ -459,6 +459,31 @@ class MockSerialProtocol(SerialProtocolInterface):
         """Check if moving."""
         return self._is_moving
 
+    def wait_for_movement_end(self, timeout: float = 300.0) -> int:
+        """
+        Wait for movement to finish.
+
+        In simulator, just waits for _is_moving to become False.
+
+        Args:
+            timeout: Maximum time to wait in seconds.
+
+        Returns:
+            Final position.
+        """
+        if not self._connected:
+            raise NotConnectedError("Simulator not connected")
+
+        start_time = time.time()
+
+        while self._is_moving:
+            if time.time() - start_time > timeout:
+                self._is_moving = False
+                raise TimeoutError(f"Movement did not complete within {timeout} seconds")
+            time.sleep(0.1)
+
+        return self._position
+
     def get_backlash(self) -> tuple[int, int]:
         """
         Read current backlash compensation settings.
@@ -504,6 +529,17 @@ class MockSerialProtocol(SerialProtocolInterface):
             raise ValueError(f"Max travel must be 1-65535, got {value}")
         self._max_limit = value
         logger.info(f"Simulator max travel set to {value}")
+
+    def sync_position(self, value: int) -> None:
+        """Sync/set the simulated position counter to a specific value."""
+        if not self._connected:
+            raise NotConnectedError("Simulator not connected")
+        if value < 0 or value > 999999:
+            raise ValueError(f"Position must be 0-999999, got {value}")
+        old_pos = self._position
+        self._position = value
+        self._target_position = value
+        logger.info(f"Simulator position synced: {old_pos} -> {value}")
 
     def reset(self) -> None:
         """Reset simulator to initial state (for testing)."""

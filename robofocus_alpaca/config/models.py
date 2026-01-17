@@ -180,6 +180,12 @@ class UserSettings(BaseModel):
         le=65535,
         description="Software minimum position limit"
     )
+    zero_offset: int = Field(
+        default=0,
+        ge=0,
+        le=999999,
+        description="Hardware position that corresponds to logical zero"
+    )
     use_simulator: Optional[bool] = Field(
         default=None,
         description="Use simulator mode instead of real hardware. None = use config.json"

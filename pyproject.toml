@@ -2,9 +2,6 @@
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["robofocus_alpaca"]
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["robofocus_alpaca*"]
@@ -12,7 +9,7 @@ exclude = ["openspec*", "references*", "tests*"]
 
 [project]
 name = "robofocus-alpaca"
-version = "1.0.0"
+version = "1.0.2"
 description = "ASCOM Alpaca driver for Robofocus electronic focuser"
 readme = "README.md"
 requires-python = ">=3.9"

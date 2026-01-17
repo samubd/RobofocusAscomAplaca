@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-01-17
+
+### Added
+- **Set as Zero (Software Offset)** - New "Set as Zero" button in web GUI saves current position as the zero reference point. All positions are displayed relative to this point. Persisted in `user_settings.json`
+- **Max Increment Validation** - Move commands now validate against `max_increment` setting and return ASCOM error 1026 (InvalidValue) if exceeded
+
+### Fixed
+- **Max Extension with Zero Offset** - When zero offset is set, `maxstep` API correctly returns the logical maximum (hardware max minus offset)
+- **Position Calculations** - All position reads and move commands properly account for zero offset
+
+### Changed
+- **Hardware as Source of Truth for Max Extension** - At connection, max travel is read from hardware and updates config. GUI changes write to hardware
+
+---
+
 ## [1.0.1] - 2025-01-16
 
 ### Added
@@ -53,8 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 1.0.2 | 2025-01-17 | Set as Zero, max_increment validation, zero offset fixes |
 | 1.0.1 | 2025-01-16 | Auto-create config files, fix simulator mode |
 | 1.0.0 | 2025-01-15 | Initial public release |
 
+[1.0.2]: https://github.com/samubd/RobofocusAscomAplaca/releases/tag/v1.0.2
 [1.0.1]: https://github.com/samubd/RobofocusAscomAplaca/releases/tag/v1.0.1
 [1.0.0]: https://github.com/samubd/RobofocusAscomAplaca/releases/tag/v1.0.0

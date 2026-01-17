@@ -66,3 +66,13 @@ class SensorError(DriverError):
 class LockTimeoutError(DriverError):
     """Failed to acquire serial lock within timeout."""
     pass
+
+
+class ManualMovementDetected(RobofocusException):
+    """Manual movement from handset detected (I/O chars received when idle)."""
+    pass
+
+
+class MovementInProgressError(RobofocusException):
+    """Cannot execute command while movement is in progress."""
+    pass

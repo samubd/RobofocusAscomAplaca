@@ -13,7 +13,12 @@ from typing import Optional
 from robofocus_alpaca.protocol.interface import SerialProtocolInterface
 from robofocus_alpaca.config.models import FocuserConfig, AppConfig
 from robofocus_alpaca.config.loader import save_config
-from robofocus_alpaca.utils.exceptions import NotConnectedError, InvalidValueError
+from robofocus_alpaca.config.user_settings import get_user_settings
+from robofocus_alpaca.utils.exceptions import (
+    NotConnectedError,
+    InvalidValueError,
+    MovementInProgressError,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -137,16 +142,15 @@ class FocuserController:
                 logger.info(f"Saved serial port to config: {port_name}")
 
         try:
-            # Read max travel from hardware
+            # Read max travel from hardware - hardware is the source of truth
             hw_max_travel = self.protocol.get_max_travel()
             if hw_max_travel > 0:
-                # Update config with hardware value if valid
                 if hw_max_travel != self.config.max_step:
                     logger.info(f"Hardware max travel: {hw_max_travel} (config was {self.config.max_step})")
                     self.config.max_step = hw_max_travel
                     config_changed = True
                 else:
-                    logger.debug(f"Hardware max travel: {hw_max_travel}")
+                    logger.debug(f"Hardware max travel matches config: {hw_max_travel}")
         except Exception as e:
             logger.warning(f"Could not read max travel from hardware: {e}")
 
@@ -185,12 +189,13 @@ class FocuserController:
 
     def get_position(self) -> int:
         """
-        Get current position.
+        Get current logical position (hardware position minus zero offset).
 
         Returns cached position if moving, queries hardware if idle.
+        If external movement from handset is detected, starts polling thread.
 
         Returns:
-            Position in steps.
+            Logical position in steps (can be negative if below zero point).
 
         Raises:
             NotConnectedError: If not connected.
@@ -198,14 +203,20 @@ class FocuserController:
         if not self.connected:
             raise NotConnectedError("Focuser not connected")
 
-        if self.protocol.is_moving():
-            # Return cached position during movement
-            return self._position_cache
-        else:
-            # Query hardware when idle
-            self._position_cache = self.protocol.get_position()
-            self._last_position_update = datetime.now()
-            return self._position_cache
+        # ALWAYS call protocol.get_position() - it handles all states internally:
+        # - IDLE: sends FG query
+        # - MOVING_PROGRAMMATIC: returns cached position
+        # - MOVING_EXTERNAL: reads buffer to detect when movement ends
+        hardware_position = self.protocol.get_position()
+        self._last_position_update = datetime.now()
+
+        # Apply zero offset to get logical position
+        user_settings = get_user_settings()
+        zero_offset = user_settings.zero_offset if user_settings else 0
+        logical_position = hardware_position - zero_offset
+
+        self._position_cache = logical_position
+        return logical_position
 
     @property
     def is_moving(self) -> bool:
@@ -221,29 +232,51 @@ class FocuserController:
 
     def move(self, target: int) -> None:
         """
-        Move to absolute position (non-blocking).
+        Move to absolute logical position (non-blocking).
 
         Args:
-            target: Target position in steps.
+            target: Target logical position in steps.
 
         Raises:
             NotConnectedError: If not connected.
-            InvalidValueError: If target out of range.
+            InvalidValueError: If target out of range or exceeds max_increment.
         """
         if not self.connected:
             raise NotConnectedError("Focuser not connected")
 
-        # Validate range
-        if target < self.config.min_step or target > self.config.max_step:
+        # Get zero offset for logical position calculation
+        user_settings = get_user_settings()
+        zero_offset = user_settings.zero_offset if user_settings else 0
+
+        # Calculate logical max (hardware max - zero offset)
+        logical_max = self.config.max_step - zero_offset
+
+        # Validate logical range
+        if target < self.config.min_step or target > logical_max:
             raise InvalidValueError(
-                f"Position {target} out of range [{self.config.min_step}, {self.config.max_step}]"
+                f"Position {target} out of range [{self.config.min_step}, {logical_max}]"
             )
 
-        # Clamp to limits (safety)
-        target = max(self.config.min_step, min(target, self.config.max_step))
+        # Validate max_increment (logical delta)
+        delta = abs(target - self._position_cache)
+        if delta > self.config.max_increment:
+            raise InvalidValueError(
+                f"Move delta {delta} exceeds max_increment {self.config.max_increment}"
+            )
+        hardware_target = target + zero_offset
 
-        # Start movement
-        self.protocol.move_absolute(target)
+        # Validate hardware target is within physical bounds
+        if hardware_target < 0:
+            raise InvalidValueError(
+                f"Hardware position {hardware_target} would be negative"
+            )
+
+        # Clamp to logical limits (safety)
+        target = max(self.config.min_step, min(target, logical_max))
+        hardware_target = target + zero_offset
+
+        # Start movement with hardware position
+        self.protocol.move_absolute(hardware_target)
 
         # Start polling thread if not already running
         if not self._polling_thread or not self._polling_thread.is_alive():
@@ -254,7 +287,7 @@ class FocuserController:
             )
             self._polling_thread.start()
 
-        logger.info(f"Movement started: {self._position_cache} -> {target}")
+        logger.info(f"Movement started: {self._position_cache} -> {target} (hw: {hardware_target})")
 
     def halt(self) -> None:
         """
@@ -293,78 +326,28 @@ class FocuserController:
 
     def _poll_movement(self) -> None:
         """
-        Background thread to poll movement status and update position cache.
+        Background thread to wait for movement completion.
+
+        Uses protocol.wait_for_movement_end() which blocks until movement
+        finishes (receives 'F' + position packet). This is aligned with
+        the INDI driver architecture.
         """
         logger.debug("Movement polling thread started")
 
-        interval_ms = self.config.polling_interval_moving_ms
-        last_position = self._position_cache
-        stall_count = 0
-        max_stall_count = 5  # ~500ms at 100ms polling
-
         try:
-            while not self._stop_polling.is_set():
-                try:
-                    # Read asynchronous characters
-                    chars = self.protocol.read_async_chars()
+            # Block until movement finishes
+            # wait_for_movement_end() reads I/O/F chars and returns final position
+            final_position = self.protocol.wait_for_movement_end()
 
-                    for char in chars:
-                        if char == 'I':
-                            # Inward movement
-                            self._position_cache -= 1
-                            stall_count = 0
-                        elif char == 'O':
-                            # Outward movement
-                            self._position_cache += 1
-                            stall_count = 0
-                        elif char == 'F':
-                            # Finished - force clear moving flag
-                            if hasattr(self.protocol, '_is_moving_flag'):
-                                self.protocol._is_moving_flag = False
-                            logger.info(f"Movement finished signal received")
+            self._position_cache = final_position
+            self._last_position_update = datetime.now()
+            logger.info(f"Movement completed at position {final_position}")
 
-                    # Check if still moving
-                    if not self.protocol.is_moving():
-                        logger.debug("Movement polling thread stopping (idle)")
-                        break
-
-                    # Stall detection: if no movement chars received for a while,
-                    # assume movement finished (in case we missed the 'F' char)
-                    if self._position_cache == last_position:
-                        stall_count += 1
-                        if stall_count >= max_stall_count:
-                            logger.warning("Movement stall detected, forcing idle state")
-                            if hasattr(self.protocol, '_is_moving_flag'):
-                                self.protocol._is_moving_flag = False
-                            break
-                    else:
-                        last_position = self._position_cache
-                        stall_count = 0
-
-                    # Sleep
-                    time.sleep(interval_ms / 1000.0)
-
-                except Exception as e:
-                    logger.error(f"Error in polling thread: {e}")
-                    break
-        finally:
-            # Always update final position when thread exits
-            try:
-                # Give hardware a moment to settle after movement before querying position
-                # Without this delay, the FG command may timeout if sent too soon after 'F' char
-                # Keep moving flag True during this settling time so external get_position()
-                # calls will return cached value instead of querying hardware
-                time.sleep(0.15)  # 150ms settling time
-
-                # NOW clear moving flag and query final position
-                if hasattr(self.protocol, '_is_moving_flag'):
-                    self.protocol._is_moving_flag = False
-
-                self._position_cache = self.protocol.get_position()
-                self._last_position_update = datetime.now()
-                logger.debug(f"Polling thread exit, final position: {self._position_cache}")
-            except Exception as e:
-                logger.error(f"Error getting final position: {e}")
+        except Exception as e:
+            logger.error(f"Error in movement polling thread: {e}")
+            # Ensure movement state is reset on error
+            if hasattr(self.protocol, '_is_moving_flag'):
+                self.protocol._is_moving_flag = False
 
         logger.debug("Movement polling thread stopped")
 
@@ -388,20 +371,25 @@ class FocuserController:
         if not self.connected:
             raise NotConnectedError("Focuser not connected")
 
-        # Return cached value during movement to avoid "Unexpected response to FB: FD" errors
-        # The hardware cannot respond to FB commands while sending async movement chars (I/O/F)
+        # Return cached value during movement
         if self.protocol.is_moving():
             logger.debug(f"Backlash query during movement, returning cached value: {self._backlash_cache}")
             return self._backlash_cache
 
         # Query hardware when idle and update cache
-        direction, amount = self.protocol.get_backlash()
+        try:
+            direction, amount = self.protocol.get_backlash()
 
-        # Convert to signed value (INDI convention)
-        # direction 2 = IN = negative, direction 3 = OUT = positive
-        self._backlash_cache = -amount if direction == 2 else amount
+            # Convert to signed value (INDI convention)
+            # direction 2 = IN = negative, direction 3 = OUT = positive
+            self._backlash_cache = -amount if direction == 2 else amount
 
-        return self._backlash_cache
+            return self._backlash_cache
+
+        except MovementInProgressError:
+            # Movement started between our check and the query
+            logger.debug(f"Movement started during backlash query, returning cached: {self._backlash_cache}")
+            return self._backlash_cache
 
     def set_backlash(self, value: int) -> None:
         """
