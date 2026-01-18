@@ -116,15 +116,11 @@ async def get_absolute(
 
 @router.get("/maxstep", response_model=AlpacaResponse)
 async def get_maxstep(
-    request: Request,
     client_id: int = Depends(get_client_id),
     focuser: FocuserController = Depends(get_focuser)
 ):
-    """Get maximum logical position (adjusted for zero offset)."""
-    from robofocus_alpaca.config.user_settings import get_user_settings
-    user_settings = get_user_settings()
-    zero_offset = user_settings.zero_offset if user_settings else 0
-    value = focuser.config.max_step - zero_offset
+    """Get maximum position."""
+    value = focuser.config.max_step
     response = make_response(value, client_id, get_next_transaction_id())
     return response
 

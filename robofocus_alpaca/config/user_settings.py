@@ -176,21 +176,6 @@ class UserSettingsManager:
             logger.info(f"Saved min_step: {value}")
 
     @property
-    def zero_offset(self) -> int:
-        """Get zero offset (hardware position that corresponds to logical zero)."""
-        return self._settings.zero_offset
-
-    @zero_offset.setter
-    def zero_offset(self, value: int) -> None:
-        """Set zero offset and save."""
-        if value < 0 or value > 999999:
-            raise ValueError(f"zero_offset must be 0-999999, got {value}")
-        if self._settings.zero_offset != value:
-            self._settings.zero_offset = value
-            self.save()
-            logger.info(f"Saved zero_offset: {value}")
-
-    @property
     def use_simulator(self) -> Optional[bool]:
         """Get simulator mode preference. None means use config.json."""
         return self._settings.use_simulator

@@ -9,7 +9,7 @@ exclude = ["openspec*", "references*", "tests*"]
 
 [project]
 name = "robofocus-alpaca"
-version = "1.0.2"
+version = "1.0.3"
 description = "ASCOM Alpaca driver for Robofocus electronic focuser"
 readme = "README.md"
 requires-python = ">=3.9"

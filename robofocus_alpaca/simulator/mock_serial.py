@@ -531,15 +531,23 @@ class MockSerialProtocol(SerialProtocolInterface):
         logger.info(f"Simulator max travel set to {value}")
 
     def sync_position(self, value: int) -> None:
-        """Sync/set the simulated position counter to a specific value."""
+        """Sync/set the simulated position counter to a specific value.
+
+        Note: Mimics real hardware behavior where FS000000 and FS000001
+        return current position instead of setting it. Values 0 or 1 are converted to 2.
+        """
         if not self._connected:
             raise NotConnectedError("Simulator not connected")
         if value < 0 or value > 999999:
             raise ValueError(f"Position must be 0-999999, got {value}")
+
+        # Mimic hardware behavior: 0 or 1 becomes 2
+        hw_value = value if value >= 2 else 2
+
         old_pos = self._position
-        self._position = value
-        self._target_position = value
-        logger.info(f"Simulator position synced: {old_pos} -> {value}")
+        self._position = hw_value
+        self._target_position = hw_value
+        logger.info(f"Simulator position synced: {old_pos} -> {hw_value}" + (f" (requested {value})" if hw_value != value else ""))
 
     def reset(self) -> None:
         """Reset simulator to initial state (for testing)."""

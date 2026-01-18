@@ -843,6 +843,9 @@ class RobofocusSerial(SerialProtocolInterface):
         This does NOT move the focuser - it sets the internal counter.
         Used for calibration (e.g., "Set as Zero").
 
+        Note: FS000000 and FS000001 return current position instead of setting it.
+        Values 0 or 1 are automatically converted to 2.
+
         Args:
             value: Position value to set (0-999999).
         """
@@ -855,16 +858,20 @@ class RobofocusSerial(SerialProtocolInterface):
         if value < 0 or value > 999999:
             raise ValueError(f"Position must be 0-999999, got {value}")
 
-        logger.info(f"Syncing hardware position to {value}")
+        # FS000000 and FS000001 return current position instead of setting it
+        # Use 2 as minimum value for hardware calibration
+        hw_value = value if value >= 2 else 2
 
-        response = self.send_command("FS", value)
+        logger.info(f"Syncing hardware position to {hw_value}" + (f" (requested {value})" if hw_value != value else ""))
+
+        response = self.send_command("FS", hw_value)
         parsed = parse_response(response)
 
         if parsed["cmd"] != "FS":
             logger.warning(f"Unexpected response to FS: {parsed['cmd']}")
 
-        # Update cached position
-        self._position_cache = value
+        # Update cached position with actual hardware value
+        self._position_cache = hw_value
 
     def read_async_chars(self) -> List[str]:
         """

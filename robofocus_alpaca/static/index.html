@@ -416,9 +416,9 @@
     <div class="section">
         <h2>Calibration</h2>
         <div class="calibration-row">
-            <label>Current Position:</label>
-            <input type="number" id="current-pos-display" readonly>
-            <button class="btn-warning" onclick="setZero()">Set as Zero</button>
+            <label>Sync Position:</label>
+            <input type="number" id="sync-position" value="0" min="0" max="999999">
+            <button class="btn-warning" onclick="syncPosition()">Sync</button>
         </div>
         <div class="calibration-row">
             <label>Max Extension:</label>
@@ -526,9 +526,8 @@
                     modeIndicator.className = 'mode-hardware';
                 }
 
-                // Update position
+                // Update position display (but not sync-position input - user edits that)
                 document.getElementById('position').textContent = data.connected ? data.position : '--';
-                document.getElementById('current-pos-display').value = data.connected ? data.position : '';
 
                 // Update temperature
                 document.getElementById('temperature').textContent =
@@ -657,14 +656,24 @@
         // Calibration
         // ====================================================================
 
-        async function setZero() {
+        async function syncPosition() {
             hideMessages();
+            const value = parseInt(document.getElementById('sync-position').value);
+
+            if (isNaN(value) || value < 0 || value > 999999) {
+                showError('Position must be 0-999999');
+                return;
+            }
 
             try {
-                const response = await fetch('/gui/set-zero', { method: 'POST' });
+                const response = await fetch('/gui/sync-position', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ position: value })
+                });
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.detail || 'Failed to set zero');
+                    throw new Error(error.detail || 'Failed to sync position');
                 }
 
                 const result = await response.json();

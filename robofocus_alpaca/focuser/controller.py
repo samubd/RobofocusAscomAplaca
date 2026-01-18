@@ -13,7 +13,6 @@ from typing import Optional
 from robofocus_alpaca.protocol.interface import SerialProtocolInterface
 from robofocus_alpaca.config.models import FocuserConfig, AppConfig
 from robofocus_alpaca.config.loader import save_config
-from robofocus_alpaca.config.user_settings import get_user_settings
 from robofocus_alpaca.utils.exceptions import (
     NotConnectedError,
     InvalidValueError,
@@ -189,13 +188,12 @@ class FocuserController:
 
     def get_position(self) -> int:
         """
-        Get current logical position (hardware position minus zero offset).
+        Get current position.
 
         Returns cached position if moving, queries hardware if idle.
-        If external movement from handset is detected, starts polling thread.
 
         Returns:
-            Logical position in steps (can be negative if below zero point).
+            Position in steps.
 
         Raises:
             NotConnectedError: If not connected.
@@ -207,16 +205,9 @@ class FocuserController:
         # - IDLE: sends FG query
         # - MOVING_PROGRAMMATIC: returns cached position
         # - MOVING_EXTERNAL: reads buffer to detect when movement ends
-        hardware_position = self.protocol.get_position()
+        self._position_cache = self.protocol.get_position()
         self._last_position_update = datetime.now()
-
-        # Apply zero offset to get logical position
-        user_settings = get_user_settings()
-        zero_offset = user_settings.zero_offset if user_settings else 0
-        logical_position = hardware_position - zero_offset
-
-        self._position_cache = logical_position
-        return logical_position
+        return self._position_cache
 
     @property
     def is_moving(self) -> bool:
@@ -232,10 +223,10 @@ class FocuserController:
 
     def move(self, target: int) -> None:
         """
-        Move to absolute logical position (non-blocking).
+        Move to absolute position (non-blocking).
 
         Args:
-            target: Target logical position in steps.
+            target: Target position in steps.
 
         Raises:
             NotConnectedError: If not connected.
@@ -244,39 +235,24 @@ class FocuserController:
         if not self.connected:
             raise NotConnectedError("Focuser not connected")
 
-        # Get zero offset for logical position calculation
-        user_settings = get_user_settings()
-        zero_offset = user_settings.zero_offset if user_settings else 0
-
-        # Calculate logical max (hardware max - zero offset)
-        logical_max = self.config.max_step - zero_offset
-
-        # Validate logical range
-        if target < self.config.min_step or target > logical_max:
+        # Validate range
+        if target < self.config.min_step or target > self.config.max_step:
             raise InvalidValueError(
-                f"Position {target} out of range [{self.config.min_step}, {logical_max}]"
+                f"Position {target} out of range [{self.config.min_step}, {self.config.max_step}]"
             )
 
-        # Validate max_increment (logical delta)
+        # Validate max_increment
         delta = abs(target - self._position_cache)
         if delta > self.config.max_increment:
             raise InvalidValueError(
                 f"Move delta {delta} exceeds max_increment {self.config.max_increment}"
             )
-        hardware_target = target + zero_offset
 
-        # Validate hardware target is within physical bounds
-        if hardware_target < 0:
-            raise InvalidValueError(
-                f"Hardware position {hardware_target} would be negative"
-            )
+        # Clamp to limits (safety)
+        target = max(self.config.min_step, min(target, self.config.max_step))
 
-        # Clamp to logical limits (safety)
-        target = max(self.config.min_step, min(target, logical_max))
-        hardware_target = target + zero_offset
-
-        # Start movement with hardware position
-        self.protocol.move_absolute(hardware_target)
+        # Start movement
+        self.protocol.move_absolute(target)
 
         # Start polling thread if not already running
         if not self._polling_thread or not self._polling_thread.is_alive():
@@ -287,7 +263,7 @@ class FocuserController:
             )
             self._polling_thread.start()
 
-        logger.info(f"Movement started: {self._position_cache} -> {target} (hw: {hardware_target})")
+        logger.info(f"Movement started: {self._position_cache} -> {target}")
 
     def halt(self) -> None:
         """

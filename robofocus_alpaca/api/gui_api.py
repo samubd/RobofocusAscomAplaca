@@ -115,14 +115,6 @@ async def get_status(request: Request):
     mode = "simulator" if simulator else "hardware"
     connected = focuser.connected
 
-    # Get zero offset for logical position calculation
-    user_settings = getattr(request.app.state, 'user_settings', None)
-    zero_offset = user_settings.zero_offset if user_settings else 0
-
-    # Calculate logical max_step (hardware max - zero offset)
-    hardware_max = config.focuser.max_step if config else 60000
-    logical_max = hardware_max - zero_offset
-
     status = GUIStatus(
         mode=mode,
         connected=connected,
@@ -132,7 +124,7 @@ async def get_status(request: Request):
         is_moving=False,
         temperature=None,
         firmware_version=None,
-        max_step=logical_max,
+        max_step=config.focuser.max_step if config else 60000,
         max_increment=config.focuser.max_increment if config else 60000,
         min_step=config.focuser.min_step if config else 0,
     )
@@ -367,44 +359,46 @@ async def halt_focuser(request: Request):
 # Calibration Endpoints
 # ============================================================================
 
-@router.post("/set-zero")
-async def set_zero_position(request: Request):
+@router.post("/sync-position")
+async def sync_position(request: Request, data: SetPositionRequest):
     """
-    Set current position as zero.
+    Sync/calibrate hardware position counter.
 
-    Saves the current hardware position as the zero offset.
-    All subsequent position reads will be relative to this point.
+    Uses FS command to set the hardware position counter to a specific value.
+    Note: Values 0 and 1 are converted to 2 (FS000000/FS000001 return position instead of setting it).
     """
     focuser = get_focuser(request)
-    user_settings = getattr(request.app.state, 'user_settings', None)
 
     if not focuser.connected:
         raise HTTPException(status_code=400, detail="Focuser not connected")
 
     try:
-        # Get current hardware position directly (bypass offset)
-        hardware_pos = focuser.protocol.get_position()
+        if data.position < 0 or data.position > 999999:
+            raise HTTPException(status_code=400, detail="Position must be 0-999999")
 
-        # Get current zero offset
-        old_offset = user_settings.zero_offset if user_settings else 0
+        old_pos = focuser.get_position()
 
-        # Save new offset
-        if user_settings:
-            user_settings.zero_offset = hardware_pos
+        # Set hardware position (protocol converts 0/1 to 2)
+        focuser.protocol.sync_position(data.position)
 
-        # Update controller's position cache to 0 (new logical position)
-        focuser._position_cache = 0
+        # Get actual position set (may be 2 if requested 0 or 1)
+        new_pos = 2 if data.position < 2 else data.position
 
-        logger.info(f"[GUI] Set zero at hardware position {hardware_pos} (old offset: {old_offset})")
+        # Update controller's position cache
+        focuser._position_cache = new_pos
+
+        logger.info(f"[GUI] Sync position: {old_pos} -> {new_pos}" + (f" (requested {data.position})" if new_pos != data.position else ""))
 
         return {
             "status": "ok",
-            "message": f"Zero point set at hardware position {hardware_pos}",
-            "hardware_position": hardware_pos,
-            "new_position": 0
+            "message": f"Position synced to {new_pos}" + (f" (requested {data.position})" if new_pos != data.position else ""),
+            "old_position": old_pos,
+            "new_position": new_pos
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error setting zero: {e}")
+        logger.error(f"Error syncing position: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
