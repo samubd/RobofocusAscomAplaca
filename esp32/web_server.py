@@ -83,6 +83,7 @@ class Response:
             400: "Bad Request",
             404: "Not Found",
             405: "Method Not Allowed",
+            413: "Payload Too Large",
             500: "Internal Server Error"
         }
         return texts.get(code, "Unknown")
@@ -147,6 +148,9 @@ class WebServer:
 
         await server.start(port=80)
     """
+
+    # Maximum body size in bytes (8KB to prevent OOM on ESP32)
+    MAX_BODY_SIZE = 8192
 
     def __init__(self, static_dir: str = "/static"):
         self._routes = []
@@ -228,6 +232,14 @@ class WebServer:
             # Read body if present
             content_length = int(request.headers.get('content-length', 0))
             if content_length > 0:
+                # Check body size limit to prevent OOM
+                if content_length > self.MAX_BODY_SIZE:
+                    response = Response()
+                    response.error(f"Request body too large (max {self.MAX_BODY_SIZE} bytes)", 413)
+                    writer.write(response.build())
+                    await writer.drain()
+                    return
+
                 request.body = (await reader.read(content_length)).decode('utf-8')
 
                 # Parse body based on content type

@@ -142,12 +142,12 @@ async def main():
         gc.collect()
 
         # Check WiFi state changes
-        if wifi.state == WiFiState.CONNECTED and not discovery._running:
+        if wifi.state == WiFiState.CONNECTED and not discovery.is_running:
             # WiFi reconnected - restart discovery
             print("[main] WiFi reconnected, restarting discovery")
             await discovery.start()
 
-        elif wifi.state == WiFiState.AP_MODE and discovery._running:
+        elif wifi.state == WiFiState.AP_MODE and discovery.is_running:
             # Fell back to AP - stop discovery
             print("[main] AP mode active, stopping discovery")
             discovery.stop()

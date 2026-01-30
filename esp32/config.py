@@ -36,6 +36,8 @@ class Config:
         if _HAS_NVS:
             try:
                 self._nvs = NVS(_NAMESPACE)
+                # Load focuser config from NVS
+                self._load_focuser_config()
             except Exception as e:
                 print(f"[config] NVS init failed: {e}")
 
@@ -60,6 +62,76 @@ class Config:
     def ap_ssid(self) -> str:
         """Access Point SSID for WiFi provisioning."""
         return f"Robofocus-{self.device_id}"
+
+    # --- Focuser Configuration Persistence ---
+
+    def _load_focuser_config(self):
+        """Load focuser configuration from NVS."""
+        if not self._nvs:
+            return
+
+        try:
+            # Try to load each focuser setting from NVS
+            for key in ['max_step', 'min_step', 'max_increment', 'step_size_microns', 'device_name']:
+                try:
+                    if key == 'step_size_microns':
+                        # Float values stored as string
+                        buf = bytearray(32)
+                        length = self._nvs.get_blob(key, buf)
+                        if length > 0:
+                            value = float(buf[:length].decode())
+                            self._cache[key] = value
+                    elif key == 'device_name':
+                        # String value
+                        buf = bytearray(64)
+                        length = self._nvs.get_blob(key, buf)
+                        if length > 0:
+                            self._cache[key] = buf[:length].decode()
+                    else:
+                        # Integer values
+                        value = self._nvs.get_i32(key)
+                        if value is not None:
+                            self._cache[key] = value
+                except OSError:
+                    # Key doesn't exist, use default
+                    pass
+
+            print(f"[config] Loaded focuser config: max_step={self._cache['max_step']}, "
+                  f"min_step={self._cache['min_step']}, max_increment={self._cache['max_increment']}")
+
+        except Exception as e:
+            print(f"[config] load_focuser_config error: {e}")
+
+    def _save_focuser_config(self):
+        """Save focuser configuration to NVS."""
+        if not self._nvs:
+            print("[config] NVS not available")
+            return False
+
+        try:
+            # Save integer values
+            for key in ['max_step', 'min_step', 'max_increment']:
+                value = self._cache.get(key)
+                if value is not None:
+                    self._nvs.set_i32(key, int(value))
+
+            # Save float as string
+            step_size = self._cache.get('step_size_microns')
+            if step_size is not None:
+                self._nvs.set_blob('step_size_microns', str(step_size).encode())
+
+            # Save device name
+            device_name = self._cache.get('device_name')
+            if device_name is not None:
+                self._nvs.set_blob('device_name', device_name.encode())
+
+            self._nvs.commit()
+            print(f"[config] Focuser config saved to NVS")
+            return True
+
+        except Exception as e:
+            print(f"[config] save_focuser_config error: {e}")
+            return False
 
     # --- WiFi Configuration ---
 
@@ -149,8 +221,20 @@ class Config:
         return self._cache.get(key, default)
 
     def set(self, key: str, value) -> bool:
-        """Set configuration value (in-memory, not persisted)."""
+        """
+        Set configuration value and persist to NVS.
+
+        Args:
+            key: Configuration key
+            value: Configuration value
+
+        Returns:
+            True if saved successfully.
+        """
         self._cache[key] = value
+        # Persist to NVS if it's a focuser setting
+        if key in ['max_step', 'min_step', 'max_increment', 'step_size_microns', 'device_name']:
+            return self._save_focuser_config()
         return True
 
     @property
@@ -160,6 +244,7 @@ class Config:
     @max_step.setter
     def max_step(self, value: int):
         self._cache["max_step"] = value
+        self._save_focuser_config()
 
     @property
     def min_step(self) -> int:
@@ -168,6 +253,7 @@ class Config:
     @min_step.setter
     def min_step(self, value: int):
         self._cache["min_step"] = value
+        self._save_focuser_config()
 
     @property
     def max_increment(self) -> int:
@@ -176,6 +262,7 @@ class Config:
     @max_increment.setter
     def max_increment(self, value: int):
         self._cache["max_increment"] = value
+        self._save_focuser_config()
 
     @property
     def step_size_microns(self) -> float:
