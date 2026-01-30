@@ -320,7 +320,9 @@ class RobofocusProtocol:
                 if remaining is None or len(remaining) < 8:
                     # Wait a bit and try again
                     time.sleep_ms(50)
-                    remaining = self._uart.read(8 - (len(remaining) if remaining else 0))
+                    first_part = remaining or b''
+                    second_part = self._uart.read(8 - len(first_part))
+                    remaining = first_part + (second_part or b'')
 
                 if remaining is None or len(remaining) < 8:
                     print("[serial] Incomplete response after 'F'")

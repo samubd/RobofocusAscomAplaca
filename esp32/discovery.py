@@ -29,6 +29,11 @@ class DiscoveryService:
         self._socket = None
         self._running = False
 
+    @property
+    def is_running(self) -> bool:
+        """Check if discovery service is running."""
+        return self._running
+
     def _get_response(self) -> bytes:
         """Build discovery response JSON."""
         response = {
