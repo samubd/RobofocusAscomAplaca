@@ -26,6 +26,8 @@ from discovery import discovery
 from alpaca_api import register_alpaca_routes
 from gui_api import register_gui_routes, register_wifi_routes
 
+# Note: log_buffer disabled to save memory
+
 
 # Configuration
 HTTP_PORT = 80
@@ -143,9 +145,19 @@ async def main():
 
         # Check WiFi state changes
         if wifi.state == WiFiState.CONNECTED and not discovery.is_running:
-            # WiFi reconnected - restart discovery
-            print("[main] WiFi reconnected, restarting discovery")
+            # WiFi reconnected - register Alpaca routes and restart discovery
+            print("[main] WiFi reconnected, enabling Alpaca API")
+            register_alpaca_routes(server)
+            register_gui_routes(server)
             await discovery.start()
+
+            # Auto-connect focuser if not already connected
+            if AUTO_CONNECT_FOCUSER and not controller.connected:
+                try:
+                    controller.connect()
+                    print("[main] Focuser connected")
+                except Exception as e:
+                    print(f"[main] Focuser error: {e}")
 
         elif wifi.state == WiFiState.AP_MODE and discovery.is_running:
             # Fell back to AP - stop discovery

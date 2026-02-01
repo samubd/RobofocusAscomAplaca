@@ -147,13 +147,20 @@ class WiFiManager:
         # Temporarily enable STA for scanning
         was_active = self._sta.active()
         self._sta.active(True)
+        print(f"[wifi] STA activated, was_active={was_active}")
+        time.sleep(2)  # ESP32 needs time to initialize STA before scan
+        print("[wifi] Starting scan...")
 
         try:
             networks = self._sta.scan()
+            print(f"[wifi] Raw scan returned {len(networks)} networks")
             result = []
 
             for net in networks:
-                ssid = net[0].decode('utf-8', errors='ignore')
+                try:
+                    ssid = net[0].decode('utf-8')
+                except:
+                    continue  # Skip networks with non-decodable SSIDs
                 if ssid:  # Skip hidden networks
                     result.append({
                         'ssid': ssid,
@@ -172,6 +179,7 @@ class WiFiManager:
                     seen.add(net['ssid'])
                     unique.append(net)
 
+            print(f"[wifi] Returning {len(unique)} unique networks")
             return unique
 
         except Exception as e:

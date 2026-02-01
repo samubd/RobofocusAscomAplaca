@@ -2,13 +2,18 @@
 ASCOM Alpaca API endpoints for ESP32.
 
 Implements the ASCOM Alpaca REST API for focuser control.
+Optimized for low-resource ESP32 with response caching.
 """
 
+import json
 from controller import controller
 from config import config
 
 # Transaction ID counter
 _transaction_id = 0
+
+# Pre-cached JSON strings for static responses (avoid repeated dict creation)
+_CACHE = {}
 
 
 def get_next_transaction_id() -> int:
@@ -16,6 +21,11 @@ def get_next_transaction_id() -> int:
     global _transaction_id
     _transaction_id += 1
     return _transaction_id
+
+
+def make_response_fast(value) -> str:
+    """Create minimal ASCOM response as JSON string (no transaction IDs)."""
+    return json.dumps({"Value": value, "ErrorNumber": 0, "ErrorMessage": ""})
 
 
 def make_response(value, client_id: int = 0, server_id: int = 0, error: Exception = None) -> dict:
@@ -103,8 +113,9 @@ def register_alpaca_routes(server):
     @server.route("/api/v1/focuser/0/absolute", methods=["GET"])
     async def get_absolute(request, response):
         """Return True (supports absolute positioning)."""
-        client_id = int(request.query.get("ClientTransactionID", 0))
-        return response.json(make_response(True, client_id, get_next_transaction_id()))
+        response.headers["Content-Type"] = "application/json"
+        response.body = _CACHE["absolute"]
+        return response
 
     @server.route("/api/v1/focuser/0/maxstep", methods=["GET"])
     async def get_maxstep(request, response):
@@ -124,23 +135,33 @@ def register_alpaca_routes(server):
         client_id = int(request.query.get("ClientTransactionID", 0))
         return response.json(make_response(config.step_size_microns, client_id, get_next_transaction_id()))
 
+    # Pre-cache static responses on first registration
+    if "tempcomp" not in _CACHE:
+        _CACHE["tempcomp"] = make_response_fast(False)
+        _CACHE["tempcompavailable"] = make_response_fast(False)
+        _CACHE["absolute"] = make_response_fast(True)
+        _CACHE["interfaceversion"] = make_response_fast(3)
+
     @server.route("/api/v1/focuser/0/tempcomp", methods=["GET"])
     async def get_tempcomp(request, response):
         """Get temperature compensation status (always False)."""
-        client_id = int(request.query.get("ClientTransactionID", 0))
-        return response.json(make_response(False, client_id, get_next_transaction_id()))
+        response.headers["Content-Type"] = "application/json"
+        response.body = _CACHE["tempcomp"]
+        return response
 
     @server.route("/api/v1/focuser/0/tempcompavailable", methods=["GET"])
     async def get_tempcompavailable(request, response):
         """Check if temperature compensation is available (always False)."""
-        client_id = int(request.query.get("ClientTransactionID", 0))
-        return response.json(make_response(False, client_id, get_next_transaction_id()))
+        response.headers["Content-Type"] = "application/json"
+        response.body = _CACHE["tempcompavailable"]
+        return response
 
     @server.route("/api/v1/focuser/0/interfaceversion", methods=["GET"])
     async def get_interfaceversion(request, response):
         """Get ASCOM interface version."""
-        client_id = int(request.query.get("ClientTransactionID", 0))
-        return response.json(make_response(3, client_id, get_next_transaction_id()))
+        response.headers["Content-Type"] = "application/json"
+        response.body = _CACHE["interfaceversion"]
+        return response
 
     @server.route("/api/v1/focuser/0/driverversion", methods=["GET"])
     async def get_driverversion(request, response):

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robofocus Logs</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;max-width:900px;margin:0 auto;background-color:#1a1a2e;color:#eee}.nav{background:#16213e;padding:15px 20px;margin-bottom:20px;box-shadow:0 2px 4px rgba(0,0,0,0.3)}.nav a{color:#4CAF50;text-decoration:none;margin-right:20px;font-weight:500}.nav a:hover{text-decoration:underline}.content{padding:0 20px 20px}h1{text-align:center;color:#4CAF50;margin-bottom:20px}.controls{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}.controls button{padding:10px 20px;border:none;border-radius:5px;cursor:pointer;font-size:.9em;color:white}.btn-refresh{background:#2196F3}.btn-refresh:hover{background:#1976D2}.btn-clear{background:#f44336}.btn-clear:hover{background:#d32f2f}.btn-auto{background:#4CAF50}.btn-auto.active{background:#388E3C}.log-container{background:#0d1117;border-radius:8px;padding:15px;font-family:'Consolas','Monaco',monospace;font-size:.85em;max-height:70vh;overflow-y:auto}.log-entry{padding:4px 8px;border-radius:3px;margin-bottom:2px;display:flex;gap:10px}.log-entry:hover{background:rgba(255,255,255,0.05)}.log-time{color:#666;min-width:80px}.log-level{min-width:50px;font-weight:bold}.log-level.INFO{color:#4CAF50}.log-level.WARN{color:#FF9800}.log-level.ERROR{color:#f44336}.log-level.DEBUG{color:#9E9E9E}.log-msg{flex:1;word-break:break-word}.empty{color:#666;text-align:center;padding:40px}.status{color:#aaa;font-size:.9em;margin-top:10px;text-align:center}</style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/index.html">Control Panel</a>
+        <a href="/setup.html">WiFi Settings</a>
+    </div>
+    <div class="content">
+        <h1>System Logs</h1>
+        <div class="controls">
+            <button class="btn-refresh" onclick="loadLogs()">Refresh</button>
+            <button class="btn-auto" id="autoBtn" onclick="toggleAuto()">Auto-refresh: OFF</button>
+            <button class="btn-clear" onclick="clearLogs()">Clear Logs</button>
+        </div>
+        <div class="log-container" id="logContainer">
+            <div class="empty">Loading logs...</div>
+        </div>
+        <div class="status" id="status">--</div>
+    </div>
+<script>
+let autoRefresh = false;
+let autoInterval = null;
+
+async function loadLogs() {
+    try {
+        const r = await fetch('/gui/logs?limit=100');
+        const d = await r.json();
+        const c = document.getElementById('logContainer');
+        c.textContent = '';
+
+        if (!d.logs || d.logs.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'empty';
+            empty.textContent = 'No logs available';
+            c.appendChild(empty);
+        } else {
+            d.logs.forEach(function(e) {
+                const t = new Date(e.time * 1000);
+                const ts = t.toLocaleTimeString();
+
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'log-time';
+                timeSpan.textContent = ts;
+
+                const levelSpan = document.createElement('span');
+                levelSpan.className = 'log-level ' + e.level;
+                levelSpan.textContent = e.level;
+
+                const msgSpan = document.createElement('span');
+                msgSpan.className = 'log-msg';
+                msgSpan.textContent = e.message;
+
+                entry.appendChild(timeSpan);
+                entry.appendChild(levelSpan);
+                entry.appendChild(msgSpan);
+                c.appendChild(entry);
+            });
+            c.scrollTop = c.scrollHeight;
+        }
+        document.getElementById('status').textContent = d.count + ' entries | Last updated: ' + new Date().toLocaleTimeString();
+    } catch (err) {
+        const c = document.getElementById('logContainer');
+        c.textContent = '';
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'Error loading logs';
+        c.appendChild(empty);
+    }
+}
+
+function toggleAuto() {
+    autoRefresh = !autoRefresh;
+    const btn = document.getElementById('autoBtn');
+    if (autoRefresh) {
+        btn.textContent = 'Auto-refresh: ON';
+        btn.classList.add('active');
+        autoInterval = setInterval(loadLogs, 2000);
+    } else {
+        btn.textContent = 'Auto-refresh: OFF';
+        btn.classList.remove('active');
+        if (autoInterval) clearInterval(autoInterval);
+    }
+}
+
+async function clearLogs() {
+    if (!confirm('Clear all logs?')) return;
+    try {
+        await fetch('/gui/logs', {method: 'DELETE'});
+        loadLogs();
+    } catch (err) {
+        alert('Error clearing logs');
+    }
+}
+
+window.addEventListener('load', loadLogs);
+</script>
+</body>
+</html>

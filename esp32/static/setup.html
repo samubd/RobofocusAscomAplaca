@@ -4,219 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Robofocus WiFi Setup</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #1a1a2e;
-            color: #eee;
-        }
-
-        h1 {
-            text-align: center;
-            color: #4CAF50;
-            margin-bottom: 10px;
-            font-size: 1.5em;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #aaa;
-            margin-bottom: 30px;
-            font-size: 0.9em;
-        }
-
-        .section {
-            background: #16213e;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .section h2 {
-            color: #4CAF50;
-            font-size: 1em;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #4CAF50;
-            padding-bottom: 5px;
-        }
-
-        .network-list {
-            max-height: 250px;
-            overflow-y: auto;
-        }
-
-        .network-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            margin-bottom: 8px;
-            background: #0f3460;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .network-item:hover {
-            background: #1a4a7a;
-        }
-
-        .network-item.selected {
-            background: #2e7d32;
-        }
-
-        .network-name {
-            font-weight: bold;
-        }
-
-        .network-signal {
-            color: #aaa;
-            font-size: 0.85em;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            font-size: 1em;
-            border: 2px solid #0f3460;
-            border-radius: 5px;
-            background: #1a1a2e;
-            color: #eee;
-            margin-bottom: 15px;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #4CAF50;
-        }
-
-        button {
-            width: 100%;
-            padding: 15px;
-            font-size: 1em;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            transition: all 0.2s;
-            color: white;
-            margin-bottom: 10px;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-primary {
-            background-color: #4CAF50;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background-color: #388E3C;
-        }
-
-        .btn-secondary {
-            background-color: #607D8B;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background-color: #455A64;
-        }
-
-        .btn-danger {
-            background-color: #f44336;
-        }
-
-        .btn-danger:hover:not(:disabled) {
-            background-color: #d32f2f;
-        }
-
-        .status-box {
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .status-connecting {
-            background-color: #FF9800;
-            color: white;
-        }
-
-        .status-connected {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .status-error {
-            background-color: #f44336;
-            color: white;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #aaa;
-        }
-
-        .current-wifi {
-            background: #0f3460;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-
-        .current-wifi .label {
-            color: #aaa;
-            font-size: 0.85em;
-        }
-
-        .current-wifi .value {
-            color: #4CAF50;
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-    </style>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;max-width:500px;margin:0 auto;padding:0;background-color:#1a1a2e;color:#eee}.nav-header{background:#16213e;padding:15px 20px;margin-bottom:20px;box-shadow:0 2px 4px rgba(0,0,0,0.3)}.nav-header a{color:#4CAF50;text-decoration:none;margin-right:20px;font-weight:500}.nav-header a:hover{text-decoration:underline}.content{padding:0 20px 20px}h1{text-align:center;color:#4CAF50;margin-bottom:10px;font-size:1.5em}.subtitle{text-align:center;color:#aaa;margin-bottom:30px;font-size:.9em}.section{background:#16213e;border-radius:8px;padding:20px;margin-bottom:20px;box-shadow:0 2px 4px rgba(0,0,0,0.3)}.section h2{color:#4CAF50;font-size:1em;margin-bottom:15px;border-bottom:2px solid #4CAF50;padding-bottom:5px}.network-list{max-height:250px;overflow-y:auto}.network-item{display:flex;justify-content:space-between;align-items:center;padding:12px;margin-bottom:8px;background:#0f3460;border-radius:5px;cursor:pointer;transition:background .2s}.network-item:hover{background:#1a4a7a}.network-item.selected{background:#2e7d32}.network-name{font-weight:bold}.network-signal{color:#aaa;font-size:.85em}input{width:100%;padding:12px;font-size:1em;border:2px solid #0f3460;border-radius:5px;background:#1a1a2e;color:#eee;margin-bottom:15px}input:focus{outline:none;border-color:#4CAF50}button{width:100%;padding:15px;font-size:1em;cursor:pointer;border:none;border-radius:5px;transition:all .2s;color:white;margin-bottom:10px}button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.3)}button:disabled{opacity:.5;cursor:not-allowed}.btn-primary{background-color:#4CAF50}.btn-primary:hover:not(:disabled){background-color:#388E3C}.btn-secondary{background-color:#607D8B}.btn-secondary:hover:not(:disabled){background-color:#455A64}.btn-danger{background-color:#f44336}.btn-danger:hover:not(:disabled){background-color:#d32f2f}.status-box{padding:15px;border-radius:5px;margin-bottom:15px;text-align:center}.status-connecting{background-color:#FF9800;color:white}.status-connected{background-color:#4CAF50;color:white}.status-error{background-color:#f44336;color:white}.hidden{display:none}.loading{text-align:center;padding:20px;color:#aaa}.current-wifi{background:#0f3460;padding:15px;border-radius:5px;margin-bottom:15px}.current-wifi .label{color:#aaa;font-size:.85em}.current-wifi .value{color:#4CAF50;font-weight:bold;font-size:1.1em}.success-message{background:#2e7d32;padding:20px;border-radius:8px;margin-bottom:15px}.success-message h3{color:white;margin-bottom:15px;font-size:1.2em}.success-message p{margin-bottom:10px}.success-message a{color:#81C784;text-decoration:underline;font-weight:bold}.success-message .note{font-size:.9em;color:#C8E6C9;margin-top:10px}</style>
 </head>
 <body>
-    <h1>Robofocus WiFi Setup</h1>
-    <p class="subtitle">Configure your device's network connection</p>
-
-    <!-- Current Status -->
-    <div id="status-section" class="section hidden">
-        <div id="status-box" class="status-box"></div>
+    <div class="nav-header">
+        <a href="/index.html">Control Panel</a>
+        <a href="/logs.html">Logs</a>
     </div>
 
-    <!-- Current WiFi (shown when connected) -->
-    <div id="current-wifi-section" class="section hidden">
-        <h2>Current Connection</h2>
-        <div class="current-wifi">
-            <div class="label">Connected to</div>
-            <div class="value" id="current-ssid">--</div>
-            <div class="label" style="margin-top: 10px;">IP Address</div>
-            <div class="value" id="current-ip">--</div>
+    <div class="content">
+        <h1>Robofocus WiFi Setup</h1>
+        <p class="subtitle">Configure your device's network connection</p>
+
+        <!-- Current Status -->
+        <div id="status-section" class="section hidden">
+            <div id="status-box" class="status-box"></div>
         </div>
-        <button class="btn-danger" onclick="forgetWifi()">Forget Network</button>
-    </div>
+
+        <!-- Success Message -->
+        <div id="success-section" class="section hidden">
+            <div class="success-message">
+                <h3>Connected to <span id="success-ssid"></span>!</h3>
+                <p>New IP Address: <strong id="success-ip"></strong></p>
+                <p><a href="" id="success-link" target="_blank">Go to Control Panel</a></p>
+                <p class="note">Bookmark this address for future access</p>
+            </div>
+        </div>
+
+        <!-- Current WiFi (shown when connected) -->
+        <div id="current-wifi-section" class="section hidden">
+            <h2>Current Connection</h2>
+            <div class="current-wifi">
+                <div class="label">Connected to</div>
+                <div class="value" id="current-ssid">--</div>
+                <div class="label" style="margin-top: 10px;">IP Address</div>
+                <div class="value" id="current-ip">--</div>
+            </div>
+            <button class="btn-danger" onclick="forgetWifi()">Forget Network</button>
+        </div>
 
     <!-- Network Selection -->
     <div class="section">
@@ -229,13 +54,14 @@
         </button>
     </div>
 
-    <!-- Password Entry -->
-    <div id="password-section" class="section hidden">
-        <h2>Enter Password</h2>
-        <p id="selected-network" style="margin-bottom: 15px; color: #4CAF50;"></p>
-        <input type="password" id="wifi-password" placeholder="WiFi Password">
-        <button class="btn-primary" onclick="connectWifi()">Connect</button>
-        <button class="btn-secondary" onclick="cancelConnect()">Cancel</button>
+        <!-- Password Entry -->
+        <div id="password-section" class="section hidden">
+            <h2>Enter Password</h2>
+            <p id="selected-network" style="margin-bottom: 15px; color: #4CAF50;"></p>
+            <input type="password" id="wifi-password" placeholder="WiFi Password">
+            <button class="btn-primary" onclick="connectWifi()">Connect</button>
+            <button class="btn-secondary" onclick="cancelConnect()">Cancel</button>
+        </div>
     </div>
 
     <script>
@@ -361,12 +187,20 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    showStatus('Connected! IP: ' + data.ip, 'connected');
+                    // Hide password section and status
                     document.getElementById('password-section').classList.add('hidden');
+                    document.getElementById('status-section').classList.add('hidden');
 
-                    setTimeout(function() {
-                        window.location.href = 'http://' + data.ip;
-                    }, 3000);
+                    // Show success message with new IP
+                    document.getElementById('success-ssid').textContent = selectedNetwork;
+                    document.getElementById('success-ip').textContent = data.ip;
+                    const link = document.getElementById('success-link');
+                    link.href = 'http://' + data.ip + '/';
+                    link.textContent = 'Go to Control Panel at http://' + data.ip + '/';
+                    document.getElementById('success-section').classList.remove('hidden');
+
+                    // Update current status after a delay
+                    setTimeout(checkStatus, 2000);
                 } else {
                     showStatus('Connection failed: ' + (data.error || 'Unknown error'), 'error');
                 }

@@ -23,6 +23,7 @@ DEFAULT_CONFIG = {
     "min_step": 0,
     "max_increment": 60000,
     "step_size_microns": 1.0,
+    "use_simulator": True,  # Default to simulator (no hardware needed)
 }
 
 
@@ -96,8 +97,17 @@ class Config:
                     # Key doesn't exist, use default
                     pass
 
+            # Load use_simulator setting
+            try:
+                value = self._nvs.get_i32("use_simulator")
+                if value is not None:
+                    self._cache["use_simulator"] = (value == 1)
+            except OSError:
+                pass  # Key doesn't exist, use default
+
             print(f"[config] Loaded focuser config: max_step={self._cache['max_step']}, "
-                  f"min_step={self._cache['min_step']}, max_increment={self._cache['max_increment']}")
+                  f"min_step={self._cache['min_step']}, max_increment={self._cache['max_increment']}, "
+                  f"use_simulator={self._cache.get('use_simulator', True)}")
 
         except Exception as e:
             print(f"[config] load_focuser_config error: {e}")
@@ -267,6 +277,23 @@ class Config:
     @property
     def step_size_microns(self) -> float:
         return self._cache.get("step_size_microns", 1.0)
+
+    @property
+    def use_simulator(self) -> bool:
+        """Get use_simulator setting."""
+        return self._cache.get("use_simulator", True)
+
+    @use_simulator.setter
+    def use_simulator(self, value: bool):
+        """Set use_simulator and persist to NVS."""
+        self._cache["use_simulator"] = value
+        if self._nvs:
+            try:
+                self._nvs.set_i32("use_simulator", 1 if value else 0)
+                self._nvs.commit()
+                print(f"[config] use_simulator saved: {value}")
+            except Exception as e:
+                print(f"[config] save use_simulator error: {e}")
 
 
 # Global config instance

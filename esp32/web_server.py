@@ -7,6 +7,7 @@ Provides routing, static file serving, and JSON handling.
 import uasyncio as asyncio
 import json
 import os
+import time
 
 
 class Request:
@@ -211,6 +212,10 @@ class WebServer:
             request = Request()
             request.method = parts[0]
 
+            # Log incoming request with timestamp (seconds since boot)
+            ts = time.ticks_ms() // 1000
+            print(f"[web:{ts}s] {request.method} {parts[1]}")
+
             # Parse path and query string
             full_path = parts[1]
             if '?' in full_path:
@@ -346,6 +351,7 @@ class WebServer:
             response.headers["Content-Type"] = content_type
             response.headers["Cache-Control"] = "max-age=3600"
             response.body = content
+            print(f"[web] Serving {file_path} ({len(content)} bytes)")
             return True
 
         except Exception as e:

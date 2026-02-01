@@ -8,6 +8,12 @@ from controller import controller
 from config import config
 from wifi_manager import wifi
 
+# log_buffer disabled to save memory
+
+# WiFi status cache - update every 5 calls to reduce overhead
+_wifi_cache = None
+_wifi_cache_counter = 0
+
 
 def register_gui_routes(server):
     """
@@ -21,11 +27,17 @@ def register_gui_routes(server):
     async def get_status(request, response):
         """Get complete focuser status for GUI."""
         try:
+            global _wifi_cache, _wifi_cache_counter
+
             status = controller.get_status()
 
-            # Add WiFi info
-            wifi_status = wifi.get_status()
-            status['wifi'] = wifi_status
+            # Add WiFi info (cached to reduce overhead)
+            _wifi_cache_counter += 1
+            if _wifi_cache is None or _wifi_cache_counter >= 5:
+                _wifi_cache = wifi.get_status()
+                _wifi_cache_counter = 0
+
+            status['wifi'] = _wifi_cache
             status['port'] = 'UART2'  # ESP32 uses UART, not COM port
 
             return response.json(status)
@@ -119,6 +131,38 @@ def register_gui_routes(server):
             return response.json({"success": True, "message": f"Max increment set to {value}"})
         except Exception as e:
             return response.error(str(e), 400)
+
+    @server.route("/gui/mode", methods=["GET"])
+    async def get_mode(request, response):
+        """Get current mode (simulator/hardware)."""
+        return response.json({
+            "mode": controller.mode,
+            "use_simulator": controller._use_simulator,
+            "connected": controller.connected
+        })
+
+    @server.route("/gui/mode", methods=["PUT"])
+    async def put_mode(request, response):
+        """Set mode (simulator/hardware)."""
+        try:
+            data = request.json_data or {}
+            use_simulator = data.get('use_simulator', True)
+
+            # Must disconnect first
+            if controller.connected:
+                return response.error("Disconnect before changing mode", 400)
+
+            controller.set_mode(use_simulator)
+            return response.json({
+                "success": True,
+                "mode": controller.mode,
+                "message": f"Mode changed to {controller.mode}"
+            })
+        except Exception as e:
+            return response.error(str(e), 400)
+
+    # Log endpoints disabled to save memory
+    # Use serial monitor for logs instead
 
     print("[gui] Routes registered")
 
