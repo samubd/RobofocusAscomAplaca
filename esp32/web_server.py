@@ -9,6 +9,10 @@ import json
 import os
 import time
 
+# Disable HTTP request logging for performance (print() blocks the event loop)
+# Set to True only for debugging
+DEBUG_HTTP = False
+
 
 class Request:
     """HTTP request object."""
@@ -197,103 +201,125 @@ class WebServer:
         return None
 
     async def _handle_client(self, reader, writer):
-        """Handle incoming HTTP request."""
+        """Handle incoming HTTP request with Keep-Alive support."""
+        keep_alive = True
+        request_count = 0
+        max_requests = 100  # Max requests per connection
+
         try:
-            # Read request line
-            line = await asyncio.wait_for(reader.readline(), timeout=5)
-            if not line:
-                return
+            while keep_alive and request_count < max_requests:
+                request_count += 1
 
-            line = line.decode('utf-8').strip()
-            parts = line.split(' ')
-            if len(parts) < 2:
-                return
+                # Read request line (shorter timeout for keep-alive)
+                try:
+                    line = await asyncio.wait_for(reader.readline(), timeout=30 if request_count == 1 else 5)
+                except asyncio.TimeoutError:
+                    break  # Connection idle, close it
 
-            request = Request()
-            request.method = parts[0]
-
-            # Log incoming request with timestamp (seconds since boot)
-            ts = time.ticks_ms() // 1000
-            print(f"[web:{ts}s] {request.method} {parts[1]}")
-
-            # Parse path and query string
-            full_path = parts[1]
-            if '?' in full_path:
-                request.path, query_string = full_path.split('?', 1)
-                request.parse_query_string(query_string)
-            else:
-                request.path = full_path
-
-            # Read headers
-            while True:
-                line = await asyncio.wait_for(reader.readline(), timeout=5)
-                if not line or line == b'\r\n':
+                if not line:
                     break
-                line = line.decode('utf-8').strip()
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    request.headers[key.strip().lower()] = value.strip()
 
-            # Read body if present
-            content_length = int(request.headers.get('content-length', 0))
-            if content_length > 0:
-                # Check body size limit to prevent OOM
-                if content_length > self.MAX_BODY_SIZE:
-                    response = Response()
-                    response.error(f"Request body too large (max {self.MAX_BODY_SIZE} bytes)", 413)
+                line = line.decode('utf-8').strip()
+                if not line:  # Empty line, connection closed
+                    break
+
+                parts = line.split(' ')
+                if len(parts) < 2:
+                    break
+
+                request = Request()
+                request.method = parts[0]
+
+                # Log incoming request (disabled by default for performance)
+                if DEBUG_HTTP:
+                    print(f"[web:{time.ticks_ms()//1000}s] {request.method} {parts[1]}")
+
+                # Parse path and query string
+                full_path = parts[1]
+                if '?' in full_path:
+                    request.path, query_string = full_path.split('?', 1)
+                    request.parse_query_string(query_string)
+                else:
+                    request.path = full_path
+
+                # Read headers
+                while True:
+                    line = await asyncio.wait_for(reader.readline(), timeout=5)
+                    if not line or line == b'\r\n':
+                        break
+                    line = line.decode('utf-8').strip()
+                    if ':' in line:
+                        key, value = line.split(':', 1)
+                        request.headers[key.strip().lower()] = value.strip()
+
+                # Check if client wants keep-alive
+                connection = request.headers.get('connection', '').lower()
+                keep_alive = connection != 'close'
+
+                # Read body if present
+                content_length = int(request.headers.get('content-length', 0))
+                if content_length > 0:
+                    if content_length > self.MAX_BODY_SIZE:
+                        response = Response()
+                        response.error(f"Request body too large", 413)
+                        response.headers["Connection"] = "close"
+                        writer.write(response.build())
+                        await writer.drain()
+                        break
+
+                    request.body = (await reader.read(content_length)).decode('utf-8')
+
+                    content_type = request.headers.get('content-type', '')
+                    if 'application/json' in content_type:
+                        try:
+                            request.json_data = json.loads(request.body)
+                        except Exception:
+                            pass
+                    elif 'application/x-www-form-urlencoded' in content_type:
+                        request.parse_form_data(request.body)
+
+                # Create response
+                response = Response()
+
+                # Add CORS and Keep-Alive headers
+                response.headers["Access-Control-Allow-Origin"] = "*"
+                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+                if keep_alive:
+                    response.headers["Connection"] = "keep-alive"
+                    response.headers["Keep-Alive"] = "timeout=5, max=100"
+                else:
+                    response.headers["Connection"] = "close"
+
+                # Handle OPTIONS preflight
+                if request.method == "OPTIONS":
+                    response.set_status(204)
                     writer.write(response.build())
                     await writer.drain()
-                    return
+                    continue
 
-                request.body = (await reader.read(content_length)).decode('utf-8')
+                # Try to match route
+                handler = self._match_route(request.method, request.path)
 
-                # Parse body based on content type
-                content_type = request.headers.get('content-type', '')
-                if 'application/json' in content_type:
+                if handler:
                     try:
-                        request.json_data = json.loads(request.body)
-                    except Exception:
-                        pass
-                elif 'application/x-www-form-urlencoded' in content_type:
-                    request.parse_form_data(request.body)
+                        await handler(request, response)
+                    except Exception as e:
+                        if DEBUG_HTTP:
+                            print(f"[web] Err: {e}")
+                        response.error(str(e), 500)
+                else:
+                    if not await self._serve_static(request, response):
+                        response.error("Not Found", 404)
 
-            # Create response
-            response = Response()
-
-            # Add CORS headers
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-
-            # Handle OPTIONS preflight
-            if request.method == "OPTIONS":
-                response.set_status(204)
+                # Send response
                 writer.write(response.build())
                 await writer.drain()
-                return
-
-            # Try to match route
-            handler = self._match_route(request.method, request.path)
-
-            if handler:
-                try:
-                    await handler(request, response)
-                except Exception as e:
-                    print(f"[web] Handler error: {e}")
-                    response.error(str(e), 500)
-            else:
-                # Try static file
-                if not await self._serve_static(request, response):
-                    response.error("Not Found", 404)
-
-            # Send response
-            writer.write(response.build())
-            await writer.drain()
 
         except asyncio.TimeoutError:
             pass
-        except Exception as e:
-            print(f"[web] Client error: {e}")
+        except Exception:
+            pass
         finally:
             writer.close()
             await writer.wait_closed()
@@ -351,11 +377,11 @@ class WebServer:
             response.headers["Content-Type"] = content_type
             response.headers["Cache-Control"] = "max-age=3600"
             response.body = content
-            print(f"[web] Serving {file_path} ({len(content)} bytes)")
+            if DEBUG_HTTP:
+                print(f"[web] Static {file_path}")
             return True
 
-        except Exception as e:
-            print(f"[web] Static file error: {e}")
+        except Exception:
             return False
 
     async def start(self, host: str = "0.0.0.0", port: int = 80):
